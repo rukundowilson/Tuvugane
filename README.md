@@ -34,4 +34,19 @@
 | Database   | MySQL    
 | Auth       | JWT (JSON Web Tokens)           |
 | File Upload| Cloudinary or Firebase Storage  |
+
+git clone https://github.com/rukundowilson/tuvugane.git
+cd tuvugane
+
+# Install server dependencies
+cd server
+npm install
+
+# Configure environment
+.env
+# Fill in DB credentials, JWT secret, etc.
+
+# Run backend
+npm start
+
      
