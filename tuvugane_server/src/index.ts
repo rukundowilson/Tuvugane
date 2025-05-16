@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import morgan from 'morgan';
 import path from 'path';
+import connectDB from './config/db';
 import testRoutes from './routes/testRoutes';
 
 dotenv.config();
@@ -26,6 +27,10 @@ app.get('/', (req, res) => {
 
 const startServer = async () => {
   try {
+    // Connect to database
+    await connectDB();
+    
+    // Start listening
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });

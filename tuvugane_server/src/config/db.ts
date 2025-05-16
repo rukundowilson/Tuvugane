@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Create a connection pool
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -26,6 +25,7 @@ const connectDB = async (): Promise<void> => {
   }
 };
 
+// Execute SQL query with parameters
 export const query = async (sql: string, params: any[] = []): Promise<any> => {
   try {
     const [results] = await pool.execute(sql, params);
