@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import morgan from 'morgan';
 import path from 'path';
+import testRoutes from './routes/testRoutes';
+
 dotenv.config();
 
 const app = express();
@@ -14,12 +16,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+app.use('/api/test', testRoutes);
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to Tuvugane API' });
+});
 
 const startServer = async () => {
   try {
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+      console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
