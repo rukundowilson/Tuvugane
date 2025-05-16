@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import LogoutButton from './LogoutButton';
 
 export default function Nav() {
   const router = useRouter();
@@ -26,14 +27,6 @@ export default function Nav() {
       }
     }
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('userData');
-    localStorage.removeItem('isLoggedIn');
-    setIsLoggedIn(false);
-    setUser(null);
-    router.push('/');
-  };
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -68,12 +61,7 @@ export default function Nav() {
               <div className="hidden md:block text-sm text-gray-700">
                 {user?.name && <span>Hi, {user.name.split(' ')[0]}</span>}
               </div>
-              <button
-                onClick={handleLogout}
-                className="hidden md:block text-gray-600 hover:text-primary-600 transition"
-              >
-                Logout
-              </button>
+              <LogoutButton className="hidden md:block text-gray-600 hover:text-primary-600 transition" />
               <Link href="/dashboard/new-complaint" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition">
                 Submit Complaint
               </Link>
@@ -109,12 +97,7 @@ export default function Nav() {
           <>
             <Link href="/dashboard" className="block py-2 text-gray-600 hover:text-primary-600">Dashboard</Link>
             <Link href="/dashboard/new-complaint" className="block py-2 text-gray-600 hover:text-primary-600">Submit Complaint</Link>
-            <button 
-              onClick={handleLogout}
-              className="block py-2 text-gray-600 hover:text-primary-600 w-full text-left"
-            >
-              Logout
-            </button>
+            <LogoutButton className="block py-2 text-gray-600 hover:text-primary-600 w-full text-left" />
           </>
         ) : (
           <>

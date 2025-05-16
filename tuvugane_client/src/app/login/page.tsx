@@ -2,6 +2,15 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { apiService } from '@/services/api';
+
+interface LoginResponse {
+  user_id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  token: string;
+}
 
 const Login: React.FC = () => {
   const router = useRouter();
@@ -26,21 +35,15 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-    
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const userData = {
-        user_id: 12345,
-        name: 'John Doe',
+      // Call the login API endpoint
+      const userData = await apiService.post<LoginResponse>('/users/login', {
         email: formData.email,
-        phone: '+250789123456',
-        is_anonymous: false,
-        created_at: new Date().toISOString()
-      };
+        password: formData.password
+      });
       
-      // Store user data in localStorage
+      // Store user data and token in localStorage
       localStorage.setItem('userData', JSON.stringify(userData));
+      localStorage.setItem('authToken', userData.token);
       localStorage.setItem('isLoggedIn', 'true');
       
       // Redirect to dashboard
