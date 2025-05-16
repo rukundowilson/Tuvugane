@@ -29,15 +29,17 @@ const Tuvugane: React.FC = () => {
                   Your Voice Matters in Building Better Communities
                 </h1>
                 <p className="text-xl text-gray-600 mb-8">
-                  Submit complaints, track progress, and see real change happen in your community through our transparent citizen engagement platform.
+                  Submit complaints, track progress, and see real change happen in your community through"" transparent citizen engagement platform.
                 </p>
                 <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                  <a href="#" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 text-center font-medium transition">
-                    Submit a Complaint
-                  </a>
-                  <a href="#" className="bg-white text-primary-600 border border-primary-600 px-8 py-3 rounded-md hover:bg-primary-50 text-center font-medium transition">
-                    Track Your Submission
-                  </a>
+                  <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                    <Link href="/register" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 text-center font-medium transition">
+                      Register Account
+                    </Link>
+                    <Link href="/submit-anonymous" className="bg-white text-primary-600 border border-primary-600 px-8 py-3 rounded-md hover:bg-primary-50 text-center font-medium transition">
+                      Submit Anonymously
+                    </Link>
+                  </div>
                 </div>
               </div>
               <div className="md:w-1/2 md:pl-10">
@@ -52,7 +54,7 @@ const Tuvugane: React.FC = () => {
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">Platform Features</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our platform is designed to streamline the process of submitting complaints, tracking progress, and ensuring accountability.
+                Government of Rwanda platform designed to streamline the process of submitting complaints, tracking progress, and ensuring accountability.
               </p>
             </div>
             
@@ -145,7 +147,7 @@ const Tuvugane: React.FC = () => {
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our streamlined process makes it easy to submit and track your complaints from start to finish.
+                 streamlined process makes it easy to submit and track your complaints from start to finish.
               </p>
             </div>
             
@@ -157,7 +159,7 @@ const Tuvugane: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-4">Submit Your Complaint</h3>
                 <p className="text-gray-600">
-                  Fill out our simple form with details about your issue. Add photos or supporting documents if needed.
+                  Fill out"" simple form with details about your issue. Add photos or supporting documents if needed.
                 </p>
               </div>
               
@@ -168,7 +170,7 @@ const Tuvugane: React.FC = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-4">Automatic Routing</h3>
                 <p className="text-gray-600">
-                  Our system automatically categorizes and routes your complaint to the appropriate government agency.
+                 "" system automatically categorizes and routes your complaint to the appropriate government agency.
                 </p>
               </div>
               
@@ -185,9 +187,9 @@ const Tuvugane: React.FC = () => {
             </div>
             
             <div className="mt-16 text-center">
-              <a href="#" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 inline-block font-medium transition">
-                Get Started Today
-              </a>
+              <Link href="/submit-anonymous" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 inline-block font-medium transition">
+                Submit Anonymously
+              </Link>
             </div>
           </div>
         </section>
@@ -312,9 +314,14 @@ const Tuvugane: React.FC = () => {
               <p className="text-lg text-gray-600 mb-8">
                 Join thousands of citizens already using Tuvugane to communicate with government agencies to create better communities together.
               </p>
-              <a href="#" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 inline-block font-medium transition">
-                Get Started Today
-              </a>
+              <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <Link href="/register" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 inline-block font-medium transition">
+                  Create Account
+                </Link>
+                <Link href="/login" className="bg-white text-primary-600 border border-primary-600 px-8 py-3 rounded-md hover:bg-primary-50 inline-block font-medium transition">
+                  Login
+                </Link>
+              </div>
             </div>
           </div>
         </section>
