@@ -26,7 +26,6 @@ const connectDB = async (): Promise<void> => {
   }
 };
 
-// Execute SQL query with parameters
 export const query = async (sql: string, params: any[] = []): Promise<any> => {
   try {
     const [results] = await pool.execute(sql, params);
