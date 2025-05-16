@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import path from 'path';
 import connectDB from './config/db';
 import testRoutes from './routes/testRoutes';
+import userRoutes from './routes/userRoutes';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use(morgan('dev'));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use('/api/test', testRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Tuvugane API' });

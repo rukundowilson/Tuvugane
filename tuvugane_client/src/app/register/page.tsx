@@ -2,12 +2,23 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { apiService } from '@/services/api';
+
+interface RegisterResponse {
+  user_id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  token: string;
+}
 
 const Register: React.FC = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     phone: '',
     isAnonymous: false
   });
@@ -27,25 +38,35 @@ const Register: React.FC = () => {
     setLoading(true);
     setError('');
 
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      if (formData.isAnonymous) {
+        // If anonymous, redirect to anonymous submission page
+        router.push('/submit-anonymous');
+        return;
+      }
+
+      // Register user
+      const response = await apiService.post<RegisterResponse>('/users/register', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
+      // Store user data and token in localStorage
+      localStorage.setItem('userData', JSON.stringify(response));
+      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('isLoggedIn', 'true');
       
-      const data = await response.json();
-      
-      // Store user data in localStorage
-      localStorage.setItem('userData', JSON.stringify(data.user));
-      
-      // Redirect to submission form
-      router.push('/submit-complaint');
+      // Redirect to dashboard
+      router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
       console.error(err);
@@ -63,7 +84,7 @@ const Register: React.FC = () => {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link href="/submit-complaint" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link href="/submit-anonymous" className="font-medium text-primary-600 hover:text-primary-500">
               continue as anonymous
             </Link>
           </p>
@@ -73,12 +94,13 @@ const Register: React.FC = () => {
           <div className="rounded-md shadow-sm -space-y-px">
             <div className="mb-4">
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Name
+                Name <span className="text-red-500">*</span>
               </label>
               <input
                 id="name"
                 name="name"
                 type="text"
+                required
                 value={formData.name}
                 onChange={handleChange}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
@@ -89,12 +111,13 @@ const Register: React.FC = () => {
             
             <div className="mb-4">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
+                Email address <span className="text-red-500">*</span>
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
+                required
                 value={formData.email}
                 onChange={handleChange}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
@@ -104,6 +127,42 @@ const Register: React.FC = () => {
               <p className="mt-1 text-xs text-gray-500">
                 We'll use this to send you updates about your complaint
               </p>
+            </div>
+            
+            <div className="mb-4">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Password"
+                disabled={formData.isAnonymous}
+                minLength={6}
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm Password <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Confirm Password"
+                disabled={formData.isAnonymous}
+                minLength={6}
+              />
             </div>
             
             <div className="mb-4">
@@ -175,12 +234,18 @@ const Register: React.FC = () => {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
-              {loading ? 'Processing...' : 'Register'}
+              {loading ? 'Processing...' : formData.isAnonymous ? 'Continue Anonymously' : 'Register'}
             </button>
           </div>
           
           <div className="text-center">
-            <Link href="/" className="font-medium text-primary-600 hover:text-primary-500">
+            <p className="mt-2 text-sm text-gray-600">
+              Already have an account?{' '}
+              <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
+                Sign in
+              </Link>
+            </p>
+            <Link href="/" className="font-medium text-primary-600 hover:text-primary-500 block mt-4">
               Back to home
             </Link>
           </div>
