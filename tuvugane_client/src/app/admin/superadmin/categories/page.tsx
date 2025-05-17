@@ -13,6 +13,8 @@ const CategoriesPage: React.FC = () => {
   const [error, setError] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
     fetchCategories();
@@ -52,6 +54,54 @@ const CategoriesPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to create category:', err);
       setError(err.message || 'Failed to create category. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category);
+    setEditName(category.name);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory || !editName.trim()) return;
+
+    try {
+      setIsSubmitting(true);
+      const token = apiService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      await apiService.put(`/categories/${editingCategory.category_id}`, { name: editName.trim() }, token);
+      setEditingCategory(null);
+      setEditName('');
+      await fetchCategories(); // Refresh the list
+    } catch (err: any) {
+      console.error('Failed to update category:', err);
+      setError(err.message || 'Failed to update category. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (categoryId: number) => {
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
+
+    try {
+      setIsSubmitting(true);
+      const token = apiService.getAuthToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      await apiService.delete(`/categories/${categoryId}`, token);
+      await fetchCategories(); // Refresh the list
+    } catch (err: any) {
+      console.error('Failed to delete category:', err);
+      setError(err.message || 'Failed to delete category. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -142,6 +192,9 @@ const CategoriesPage: React.FC = () => {
                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                           Name
                         </th>
+                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                          <span className="sr-only">Actions</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
@@ -151,7 +204,51 @@ const CategoriesPage: React.FC = () => {
                             {category.category_id}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {category.name}
+                            {editingCategory?.category_id === category.category_id ? (
+                              <form onSubmit={handleUpdate} className="flex items-center space-x-2">
+                                <input
+                                  type="text"
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                                  required
+                                />
+                                <button
+                                  type="submit"
+                                  disabled={isSubmitting}
+                                  className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCategory(null)}
+                                  className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                                >
+                                  Cancel
+                                </button>
+                              </form>
+                            ) : (
+                              category.name
+                            )}
+                          </td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            {editingCategory?.category_id !== category.category_id && (
+                              <div className="flex justify-end space-x-2">
+                                <button
+                                  onClick={() => handleEdit(category)}
+                                  className="text-primary-600 hover:text-primary-900"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(category.category_id)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

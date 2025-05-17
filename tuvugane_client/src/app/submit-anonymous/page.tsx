@@ -13,14 +13,21 @@ interface Agency {
   description: string;
 }
 
+interface Category {
+  category_id: number;
+  name: string;
+}
+
 const SubmitAnonymous: React.FC = () => {
   const router = useRouter();
   const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loadingAgencies, setLoadingAgencies] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: '',
+    category_id: '',
     location: '',
     agency_id: '',
     attachments: null as File[] | null
@@ -45,7 +52,21 @@ const SubmitAnonymous: React.FC = () => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await apiService.get<{ success: boolean; data: Category[] }>('/categories');
+        setCategories(response.data);
+      } catch (err: any) {
+        console.error('Failed to load categories:', err);
+        setError('Failed to load categories. Please try again later.');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
     fetchAgencies();
+    fetchCategories();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -73,30 +94,35 @@ const SubmitAnonymous: React.FC = () => {
 
     try {
       const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'attachments' && formData.attachments) {
-          formData.attachments.forEach(file => {
-            formDataToSend.append('attachments', file);
-          });
-        } else {
-          formDataToSend.append(key, value as string);
-        }
-      });
+      
+      // Map the form fields to match the backend expectations
+      formDataToSend.append('subject', formData.title);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('category_id', formData.category_id);
+      formDataToSend.append('location', formData.location);
+      formDataToSend.append('agency_id', formData.agency_id);
+      
+      if (formData.attachments) {
+        formData.attachments.forEach(file => {
+          formDataToSend.append('attachments', file);
+        });
+      }
       
       // Add anonymous flag
       formDataToSend.append('is_anonymous', 'true');
       
-      const response = await fetch('/api/complaints', {
+      const response = await fetch('/api/tickets', {
         method: 'POST',
         body: formDataToSend,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit complaint');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to submit complaint');
       }
 
       const data = await response.json();
-      setComplaintId(data.complaint_id);
+      setComplaintId(data.ticket.ticket_id);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Submission failed. Please try again.');
@@ -207,31 +233,29 @@ const SubmitAnonymous: React.FC = () => {
             </div>
             
             <div className="mb-4">
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 mb-1">
                 Category <span className="text-red-500">*</span>
               </label>
               <select
-                id="category"
-                name="category"
+                id="category_id"
+                name="category_id"
                 required
-                value={formData.category}
+                value={formData.category_id}
                 onChange={handleChange}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Select a category</option>
-                <option value="infrastructure">Infrastructure</option>
-                <option value="sanitation">Sanitation</option>
-                <option value="public_services">Public Services</option>
-                <option value="security">Security</option>
-                <option value="education">Education</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="other">Other</option>
+                {categories.map((category) => (
+                  <option key={category.category_id} value={category.category_id}>
+                    {category.name}
+                  </option>
+                ))}
               </select>
             </div>
             
             <div className="mb-4">
               <label htmlFor="agency_id" className="block text-sm font-medium text-gray-700 mb-1">
-                Agency <span className="text-red-500">*</span>
+                Government Agency <span className="text-red-500">*</span>
               </label>
               <select
                 id="agency_id"
@@ -239,16 +263,19 @@ const SubmitAnonymous: React.FC = () => {
                 required
                 value={formData.agency_id}
                 onChange={handleChange}
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 disabled={loadingAgencies}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="">{loadingAgencies ? 'Loading agencies...' : 'Select an agency'}</option>
+                <option value="">Select an agency</option>
                 {agencies.map((agency) => (
                   <option key={agency.agency_id} value={agency.agency_id}>
                     {agency.name}
                   </option>
                 ))}
               </select>
+              {loadingAgencies && (
+                <p className="mt-1 text-sm text-gray-500">Loading agencies...</p>
+              )}
             </div>
             
             <div className="mb-4">
@@ -319,10 +346,10 @@ const SubmitAnonymous: React.FC = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              disabled={loading || loadingAgencies || loadingCategories}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Submitting...' : 'Submit Anonymous Complaint'}
+              {loading ? 'Submitting...' : 'Submit Complaint'}
             </button>
           </div>
           
