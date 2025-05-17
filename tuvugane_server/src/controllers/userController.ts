@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db';
 import generateToken from '../utils/generateToken';
+import { verifyToken } from '../utils/auth';
 
 // @desc    Register a new user
 // @route   POST /api/users/register
@@ -81,5 +82,47 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Get user profile
+// @route   GET /api/users/profile
+// @access  Private
+export const getProfile = async (req: Request, res: Response) => {
+  try {
+    // Get user ID from the authenticated token
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.user_id) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Query the database for user profile using MySQL syntax
+    const users = await query(
+      `SELECT 
+        user_id,
+        name,
+        email,
+        phone,
+        created_at
+      FROM Users 
+      WHERE user_id = ?`,
+      [decoded.user_id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Return user profile without sensitive information
+    const userProfile = users[0];
+    res.json(userProfile);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }; 

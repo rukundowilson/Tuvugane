@@ -1,16 +1,28 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { apiService } from '@/services/api';
+
+interface Agency {
+  agency_id: number;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  description: string;
+}
 
 const SubmitAnonymous: React.FC = () => {
   const router = useRouter();
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     location: '',
-    institution: '',
+    agency_id: '',
     attachments: null as File[] | null
   });
   
@@ -18,6 +30,23 @@ const SubmitAnonymous: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [complaintId, setComplaintId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAgencies = async () => {
+      try {
+        setLoadingAgencies(true);
+        const data = await apiService.get<Agency[]>('/agencies');
+        setAgencies(data);
+      } catch (err: any) {
+        console.error('Failed to load agencies:', err);
+        setError('Failed to load agencies. Please try again later.');
+      } finally {
+        setLoadingAgencies(false);
+      }
+    };
+
+    fetchAgencies();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -57,11 +86,17 @@ const SubmitAnonymous: React.FC = () => {
       // Add anonymous flag
       formDataToSend.append('is_anonymous', 'true');
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockTicketId = Math.floor(100000 + Math.random() * 900000);
-      const mockComplaintId = `COMP-${mockTicketId}`;
-      setComplaintId(mockComplaintId);
+      const response = await fetch('/api/complaints', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit complaint');
+      }
+
+      const data = await response.json();
+      setComplaintId(data.complaint_id);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Submission failed. Please try again.');
@@ -195,28 +230,24 @@ const SubmitAnonymous: React.FC = () => {
             </div>
             
             <div className="mb-4">
-              <label htmlFor="institution" className="block text-sm font-medium text-gray-700 mb-1">
-                Government Institution <span className="text-red-500">*</span>
+              <label htmlFor="agency_id" className="block text-sm font-medium text-gray-700 mb-1">
+                Agency <span className="text-red-500">*</span>
               </label>
               <select
-                id="institution"
-                name="institution"
+                id="agency_id"
+                name="agency_id"
                 required
-                value={formData.institution}
+                value={formData.agency_id}
                 onChange={handleChange}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                disabled={loadingAgencies}
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
-                <option value="">Select an institution</option>
-                <option value="ministry_infrastructure">Ministry of Infrastructure</option>
-                <option value="ministry_health">Ministry of Health</option>
-                <option value="ministry_education">Ministry of Education</option>
-                <option value="local_government">Local Government Authority</option>
-                <option value="water_utility">Water Utility Company</option>
-                <option value="electricity_utility">Electricity Utility Company</option>
-                <option value="police">Police Department</option>
-                <option value="environmental_agency">Environmental Protection Agency</option>
-                <option value="transport_authority">Transport Authority</option>
-                <option value="other">Other</option>
+                <option value="">{loadingAgencies ? 'Loading agencies...' : 'Select an agency'}</option>
+                {agencies.map((agency) => (
+                  <option key={agency.agency_id} value={agency.agency_id}>
+                    {agency.name}
+                  </option>
+                ))}
               </select>
             </div>
             
