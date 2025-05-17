@@ -2,6 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { apiService } from '@/services/api';
+
+interface Agency {
+  agency_id: number;
+  name: string;
+  description: string | null;
+}
 
 const SubmitComplaint: React.FC = () => {
   const router = useRouter();
@@ -15,11 +22,15 @@ const SubmitComplaint: React.FC = () => {
     is_anonymous: boolean;
   } | null>(null);
   
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [loadingAgencies, setLoadingAgencies] = useState(true);
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
     location: '',
+    agency_id: '',
     attachments: null as File[] | null
   });
   
@@ -43,6 +54,26 @@ const SubmitComplaint: React.FC = () => {
     } else {
       setUser({ is_anonymous: true });
     }
+
+    // Fetch agencies
+    const fetchAgencies = async () => {
+      try {
+        setLoadingAgencies(true);
+        const token = localStorage.getItem('userToken');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+        const data = await apiService.get<Agency[]>('/agencies', token);
+        setAgencies(data);
+      } catch (err: any) {
+        console.error('Failed to load agencies:', err);
+        setError('Failed to load agencies. Please try again later.');
+      } finally {
+        setLoadingAgencies(false);
+      }
+    };
+
+    fetchAgencies();
   }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -221,6 +252,31 @@ const SubmitComplaint: React.FC = () => {
                 <option value="other">Other</option>
               </select>
             </div>
+
+            <div className="mb-4">
+              <label htmlFor="agency_id" className="block text-sm font-medium text-gray-700 mb-1">
+                Government Agency <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="agency_id"
+                name="agency_id"
+                required
+                value={formData.agency_id}
+                onChange={handleChange}
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                disabled={loadingAgencies}
+              >
+                <option value="">Select an agency</option>
+                {agencies.map((agency) => (
+                  <option key={agency.agency_id} value={agency.agency_id}>
+                    {agency.name}
+                  </option>
+                ))}
+              </select>
+              {loadingAgencies && (
+                <p className="mt-1 text-sm text-gray-500">Loading agencies...</p>
+              )}
+            </div>
             
             <div className="mb-4">
               <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
@@ -290,8 +346,8 @@ const SubmitComplaint: React.FC = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              disabled={loading || loadingAgencies}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Submitting...' : 'Submit Complaint'}
             </button>

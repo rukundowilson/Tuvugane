@@ -12,24 +12,23 @@ export async function POST(request: NextRequest) {
     const location = formData.get('location') as string;
     const userId = formData.get('user_id') as string;
     const isAnonymous = formData.get('is_anonymous') === 'true';
+    const agencyId = formData.get('agency_id') as string;
     
     // Get file attachments if any
     const attachments = formData.getAll('attachments') as File[];
     let photoUrl = null;
     
     if (attachments && attachments.length > 0) {
-      
       photoUrl = '/uploaded-image.jpg'; // Mock URL
     }
     
     // Validate required fields
-    if (!title || !description || !category || !location) {
+    if (!title || !description || !category || !location || !agencyId) {
       return NextResponse.json(
-        { error: 'Title, description, category, and location are required' },
+        { error: 'Title, description, category, location, and agency are required' },
         { status: 400 }
       );
     }
-    
     
     const ticketId = Math.floor(100000 + Math.random() * 900000);
     const complaintId = `COMP-${ticketId}`;
@@ -37,6 +36,7 @@ export async function POST(request: NextRequest) {
     const ticket = {
       ticket_id: ticketId,
       user_id: userId ? parseInt(userId) : null,
+      agency_id: parseInt(agencyId),
       subject: title,
       description,
       category_id: 0, 
