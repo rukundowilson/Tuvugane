@@ -9,6 +9,7 @@ import userRoutes from './routes/userRoutes';
 import superAdminRoutes from './routes/superAdminRoutes';
 import agencyRoutes from './routes/agencyRoutes';
 import adminRoutes from './routes/adminRoutes';
+import categoryRoutes from './routes/categoryRoutes';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/agencies', agencyRoutes);
 app.use('/api/admins', adminRoutes);
+app.use('/api/categories', categoryRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Tuvugane API' });

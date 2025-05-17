@@ -25,8 +25,8 @@ const CategoriesPage: React.FC = () => {
       if (!token) {
         throw new Error('No authentication token found');
       }
-      const data = await apiService.get<Category[]>('/categories', token);
-      setCategories(data);
+      const response = await apiService.get<{ success: boolean; data: Category[] }>('/categories', token);
+      setCategories(response.data);
     } catch (err: any) {
       console.error('Failed to load categories:', err);
       setError('Failed to load categories. Please try again later.');
