@@ -135,6 +135,11 @@ const AdminDashboard: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link href="/admin/dashboard/agencies" className="text-primary-600 hover:text-primary-800">
+                  Manage Agencies
+                </Link>
+              </li>
+              <li>
                 <Link href="/admin/dashboard/settings" className="text-primary-600 hover:text-primary-800">
                   System Settings
                 </Link>
