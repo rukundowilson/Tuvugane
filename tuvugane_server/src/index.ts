@@ -6,6 +6,9 @@ import path from 'path';
 import connectDB from './config/db';
 import testRoutes from './routes/testRoutes';
 import userRoutes from './routes/userRoutes';
+import superAdminRoutes from './routes/superAdminRoutes';
+import agencyRoutes from './routes/agencyRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 dotenv.config();
 
@@ -22,6 +25,9 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use('/api/test', testRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/agencies', agencyRoutes);
+app.use('/api/admins', adminRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Tuvugane API' });

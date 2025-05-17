@@ -4,15 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/api';
 
-interface LoginResponse {
-  user_id: number;
+interface SuperAdminLoginResponse {
+  super_admin_id: number;
   name: string;
   email: string;
   phone?: string;
   token: string;
 }
 
-const Login: React.FC = () => {
+const SuperAdminLogin: React.FC = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
@@ -36,18 +36,18 @@ const Login: React.FC = () => {
 
     try {
       // Call the login API endpoint
-      const userData = await apiService.post<LoginResponse>('/users/login', {
+      const adminData = await apiService.post<SuperAdminLoginResponse>('/super-admin/login', {
         email: formData.email,
         password: formData.password
       });
       
-      // Store user data and token in localStorage
-      localStorage.setItem('userData', JSON.stringify(userData));
-      localStorage.setItem('authToken', userData.token);
-      localStorage.setItem('isLoggedIn', 'true');
+      // Store admin data and token in localStorage
+      localStorage.setItem('adminData', JSON.stringify(adminData));
+      localStorage.setItem('adminToken', adminData.token);
+      localStorage.setItem('isAdminLoggedIn', 'true');
       
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Redirect to admin dashboard
+      router.push('/admin/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials and try again.');
       console.error(err);
@@ -61,13 +61,10 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full mx-auto space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Super Admin Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/register" className="font-medium text-primary-600 hover:text-primary-500">
-              create a new account
-            </Link>
+            Please sign in to access the admin dashboard
           </p>
         </div>
         
@@ -108,26 +105,6 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                Forgot your password?
-              </a>
-            </div>
-          </div>
-
           {error && (
             <div className="bg-red-50 border-l-4 border-red-400 p-4">
               <div className="flex">
@@ -154,33 +131,20 @@ const Login: React.FC = () => {
           </div>
           
           <div className="text-center">
-            <Link href="/" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link href="/admin/register" className="font-medium text-primary-600 hover:text-primary-500">
+              Register as Super Admin
+            </Link>
+          </div>
+          
+          <div className="text-center mt-4">
+            <Link href="/" className="font-medium text-gray-600 hover:text-gray-500">
               Back to home
             </Link>
           </div>
         </form>
-        
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">
-                Or continue without an account
-              </span>
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <Link href="/submit-anonymous" className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-              Submit Anonymously
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );
 };
 
-export default Login; 
+export default SuperAdminLogin; 
