@@ -9,20 +9,22 @@ import {
   loginAdmin,
   getAdminProfile
 } from '../controllers/adminController';
-import { protect } from '../middleware/authMiddleware';
+import { protect, agencyAdminOnly, superAdminOnly } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
 // Public routes
 router.post('/login', loginAdmin);
-router.get('/by-agency/:agencyId', getAdminsByAgency);
 
-// Protected routes
-router.post('/', protect, createAdmin);
-router.get('/', protect, getAdmins);
+// Agency Admin Routes
 router.get('/profile', protect, getAdminProfile);
+router.get('/by-agency/:agencyId', protect, getAdminsByAgency);
+
+// Super Admin Routes
+router.post('/', protect, superAdminOnly, createAdmin);
+router.get('/', protect, superAdminOnly, getAdmins);
 router.get('/:id', protect, getAdminById);
 router.put('/:id', protect, updateAdmin);
-router.delete('/:id', protect, deleteAdmin);
+router.delete('/:id', protect, superAdminOnly, deleteAdmin);
 
 export default router; 
