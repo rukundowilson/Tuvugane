@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../config/db';
 import generateToken from '../utils/generateToken';
 import { Admin, CreateAdminDto, UpdateAdminDto, AdminResponse } from '../models/Admin';
+import jwt from 'jsonwebtoken';
 
 // @desc    Create a new admin for an agency
 // @route   POST /api/admins
@@ -50,12 +51,13 @@ export const createAdmin = async (req: Request, res: Response): Promise<void> =>
         [result.insertId]
       );
       
-      // Generate token for the new admin
-      const token = generateToken(admins[0].admin_id);
+      // Generate token for the new admin with role information
+      const token = generateToken(admins[0].admin_id, 'agency_admin', admins[0].agency_id);
       
       const response: AdminResponse = {
         ...admins[0],
-        token
+        token,
+        role: 'agency_admin'
       };
       
       res.status(201).json({
@@ -272,6 +274,7 @@ export const deleteAdmin = async (req: Request, res: Response): Promise<void> =>
 // @access  Public
 export const loginAdmin = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('Login attempt with:', { email: req.body.email });
     const { email, password } = req.body;
     
     if (!email || !password) {
@@ -282,18 +285,40 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
     // Find admin by email
     const admins = await query('SELECT * FROM Admins WHERE email = ?', [email]);
     
+    console.log('Admin found:', admins.length > 0 ? 'Yes' : 'No');
+    
     if (admins.length === 0) {
       res.status(401).json({ message: 'Invalid email or password' });
       return;
     }
     
     const admin = admins[0];
+    console.log('Admin db record:', { 
+      admin_id: admin.admin_id, 
+      email: admin.email,
+      has_password: !!admin.password_hash,
+      agency_id: admin.agency_id
+    });
     
     // Check if password matches
-    const isMatch = await bcrypt.compare(password, admin.password_hash);
+    try {
+      console.log('Comparing password with hash...');
+      const isMatch = await bcrypt.compare(password, admin.password_hash);
+      console.log('Password match result:', isMatch);
+      
+      if (!isMatch) {
+        res.status(401).json({ message: 'Invalid email or password' });
+        return;
+      }
+    } catch (err) {
+      console.error('Error comparing passwords:', err);
+      res.status(500).json({ message: 'Error validating credentials' });
+      return;
+    }
     
-    if (!isMatch) {
-      res.status(401).json({ message: 'Invalid email or password' });
+    // Check if admin belongs to an agency
+    if (!admin.agency_id) {
+      res.status(403).json({ message: 'This account is not associated with an agency' });
       return;
     }
     
@@ -301,8 +326,19 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
     const agencies = await query('SELECT name FROM Agencies WHERE agency_id = ?', [admin.agency_id]);
     const agencyName = agencies.length > 0 ? agencies[0].name : null;
     
-    // Generate token
-    const token = generateToken(admin.admin_id);
+    if (!agencyName) {
+      res.status(403).json({ message: 'Associated agency not found' });
+      return;
+    }
+    
+    // Generate token with admin_id and role
+    const token = generateToken(admin.admin_id, 'agency_admin', admin.agency_id);
+    
+    console.log('Generated token payload:', {
+      id: admin.admin_id,
+      role: 'agency_admin',
+      agency_id: admin.agency_id
+    });
     
     const response: AdminResponse = {
       admin_id: admin.admin_id,
@@ -310,7 +346,8 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
       email: admin.email,
       agency_id: admin.agency_id,
       created_at: admin.created_at,
-      token
+      token,
+      role: 'agency_admin'
     };
     
     res.json({
@@ -318,7 +355,7 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
       agency_name: agencyName
     });
   } catch (error: any) {
-    console.error(error);
+    console.error('Login error:', error);
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };

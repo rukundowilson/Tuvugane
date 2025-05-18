@@ -38,7 +38,14 @@ export const apiService = {
     });
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
+      // Try to get detailed error information
+      try {
+        const errorData = await response.json();
+        throw new Error(`API error: ${response.status} ${response.statusText} - ${errorData.message || JSON.stringify(errorData)}`);
+      } catch (jsonError) {
+        // Fallback if error response is not JSON
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
     }
 
     return response.json() as Promise<T>;

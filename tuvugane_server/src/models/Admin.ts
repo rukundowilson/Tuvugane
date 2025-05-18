@@ -28,4 +28,5 @@ export interface AdminResponse {
   agency_id: number;
   created_at: string | null;
   token: string;
+  role?: string;
 } 

@@ -1,9 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { query } from '../config/db';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 interface JwtPayload {
   id: number;
+  role?: string;
+  agency_id?: number;
   iat: number;
   exp: number;
 }
@@ -14,6 +21,8 @@ declare global {
     interface Request {
       user?: {
         id: number;
+        role?: string;
+        agency_id?: number;
       };
     }
   }
@@ -35,11 +44,15 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
 
     try {
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as JwtPayload;
+      const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+      
+      console.log('Token decoded:', decoded);
 
-      // Add user to request
+      // Add user to request with extended information
       req.user = {
-        id: decoded.id
+        id: decoded.id,
+        role: decoded.role,
+        agency_id: decoded.agency_id
       };
 
       next();
@@ -61,7 +74,13 @@ export const superAdminOnly = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
-    // Check if the user ID is in the SuperAdmins table
+    // If role is included in the token, use it for faster verification
+    if (req.user.role === 'super-admin') {
+      next();
+      return;
+    }
+
+    // Otherwise check database (backward compatibility)
     const superAdmins = await query('SELECT * FROM SuperAdmins WHERE super_admin_id = ?', [req.user.id]);
 
     if (superAdmins.length === 0) {
@@ -73,6 +92,36 @@ export const superAdminOnly = async (req: Request, res: Response, next: NextFunc
     next();
   } catch (error) {
     console.error('Super admin check error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Middleware to check if a user is an Agency Admin
+export const agencyAdminOnly = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Not authorized, no user found' });
+      return;
+    }
+
+    // If role is included in the token, use it for faster verification
+    if (req.user.role === 'agency_admin') {
+      next();
+      return;
+    }
+
+    // Otherwise check database (backward compatibility)
+    const admins = await query('SELECT * FROM Admins WHERE admin_id = ?', [req.user.id]);
+
+    if (admins.length === 0) {
+      res.status(403).json({ message: 'Not authorized, agency admin access required' });
+      return;
+    }
+
+    // User is an agency admin, proceed
+    next();
+  } catch (error) {
+    console.error('Agency admin check error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 }; 

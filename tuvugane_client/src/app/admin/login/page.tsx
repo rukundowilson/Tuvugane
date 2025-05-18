@@ -4,20 +4,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/api';
 
-interface SuperAdminLoginResponse {
+interface AdminLoginResponse {
   super_admin_id?: number;
+  admin_id?: number;
   name: string;
   email: string;
   phone?: string;
   token: string;
+  agency_id?: number;
+  agency_name?: string;
+  role?: string;
 }
 
-const SuperAdminLogin: React.FC = () => {
+const AdminLogin: React.FC = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [loginType, setLoginType] = useState<'super-admin' | 'agency-admin'>('agency-admin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -35,20 +40,50 @@ const SuperAdminLogin: React.FC = () => {
     setError('');
 
     try {
-      // Call the super admin login API endpoint
-      const adminData = await apiService.post<SuperAdminLoginResponse>('/super-admin/login', {
+      let adminData: AdminLoginResponse;
+      
+      // Log credentials being sent (for debugging only, remove in production)
+      console.log('Login attempt:', { 
+        type: loginType, 
         email: formData.email,
-        password: formData.password
+        passwordLength: formData.password.length 
       });
       
-      // Store admin data and token in localStorage
-      localStorage.setItem('adminData', JSON.stringify(adminData));
-      localStorage.setItem('adminToken', adminData.token);
-      localStorage.setItem('isAdminLoggedIn', 'true');
-      localStorage.setItem('adminType', 'super-admin');
-      
-      // Redirect to super admin dashboard
-      router.push('/admin/dashboard');
+      // Determine which endpoint to call based on login type
+      if (loginType === 'super-admin') {
+        adminData = await apiService.post<AdminLoginResponse>('/super-admin/login', {
+          email: formData.email,
+          password: formData.password
+        });
+        
+        // Store admin data and token in localStorage
+        localStorage.setItem('adminData', JSON.stringify(adminData));
+        localStorage.setItem('adminToken', adminData.token);
+        localStorage.setItem('isAdminLoggedIn', 'true');
+        localStorage.setItem('isAgencyAdminLoggedIn', 'false');
+        localStorage.setItem('adminType', 'super-admin');
+        
+        // Redirect to super admin dashboard
+        router.push('/admin/dashboard');
+      } else {
+        // Agency admin login
+        adminData = await apiService.post<AdminLoginResponse>('/admins/login', {
+          email: formData.email,
+          password: formData.password
+        });
+        
+        // Store admin data and token in localStorage
+        localStorage.setItem('adminData', JSON.stringify(adminData));
+        localStorage.setItem('agencyAdminToken', adminData.token);
+        localStorage.setItem('isAgencyAdminLoggedIn', 'true');
+        localStorage.setItem('isAdminLoggedIn', 'false');
+        localStorage.setItem('adminType', 'agency-admin');
+        localStorage.setItem('agencyId', adminData.agency_id?.toString() || '');
+        localStorage.setItem('agencyName', adminData.agency_name || '');
+        
+        // Redirect to agency admin dashboard
+        router.push('/admin/agency/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials and try again.');
       console.error(err);
@@ -62,11 +97,37 @@ const SuperAdminLogin: React.FC = () => {
       <div className="max-w-md w-full mx-auto space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Super Admin Login
+            Admin Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Please sign in to access the super admin dashboard
+            Please sign in to access the admin dashboard
           </p>
+        </div>
+        
+        <div className="flex justify-center space-x-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setLoginType('agency-admin')}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${
+              loginType === 'agency-admin'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
+          >
+            Agency Admin
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setLoginType('super-admin')}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${
+              loginType === 'super-admin'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300'
+            }`}
+          >
+            Super Admin
+          </button>
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -127,19 +188,21 @@ const SuperAdminLogin: React.FC = () => {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in...' : `Sign in as ${loginType === 'super-admin' ? 'Super Admin' : 'Agency Admin'}`}
             </button>
           </div>
           
-          <div className="text-center mt-4">
-            <Link href="/admin/register" className="font-medium text-primary-600 hover:text-primary-500">
-              Register as Super Admin
-            </Link>
-          </div>
+          {loginType === 'super-admin' && (
+            <div className="text-center mt-4">
+              <Link href="/admin/register" className="font-medium text-primary-600 hover:text-primary-500">
+                Register as Super Admin
+              </Link>
+            </div>
+          )}
         </form>
       </div>
     </div>
   );
 };
 
-export default SuperAdminLogin; 
+export default AdminLogin; 
