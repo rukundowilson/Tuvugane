@@ -4,7 +4,6 @@ import {
   createTicket,
   assignTicket,
   getTicketById,
-  updateTicketStatus,
   getUserTickets
 } from '../controllers/ticketController';
 import { protect } from '../middleware/authMiddleware';
@@ -18,6 +17,6 @@ router.post('/', upload.any(), createTicket);
 router.post('/:ticketId/assign', protect, assignTicket);
 router.get('/user', protect, getUserTickets);
 router.get('/:id', protect, getTicketById);
-router.put('/:id/status', protect, updateTicketStatus);
+// router.put('/:id/status', protect, updateTicketStatus);
 
 export default router; 
