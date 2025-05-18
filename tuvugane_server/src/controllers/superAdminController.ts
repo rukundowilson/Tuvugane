@@ -24,27 +24,19 @@ export const registerSuperAdmin = async (req: Request, res: Response): Promise<v
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // Token valid for 24 hours
-
-    // Create super admin
+    // Create super admin - set as verified by default
     const result = await query(
-      'INSERT INTO SuperAdmins (name, email, password, phone, is_verified, verification_token, token_expiry) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, phone || null, 0, verificationToken, tokenExpiry]
+      'INSERT INTO SuperAdmins (name, email, password, phone, is_verified) VALUES (?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, phone || null, 1]  // Set is_verified to 1
     );
 
     if (result.insertId) {
-      // Here you would normally send an email with the verification link
-      // For now, we'll just return the token in the response
-      
+      // Return success response with token for immediate login
+      const token = generateToken(result.insertId);
       res.status(201).json({
-        message: 'Super Admin registered successfully. Please verify your email.',
+        message: 'Super Admin registered successfully.',
         super_admin_id: result.insertId,
-        verification_token: verificationToken,
-        // In production, don't send the verification token in the response
-        // Instead, send an email with a link containing the token
+        token
       });
     } else {
       res.status(400).json({ message: 'Invalid super admin data' });
@@ -103,12 +95,6 @@ export const loginSuperAdmin = async (req: Request, res: Response): Promise<void
 
     const admin = admins[0];
 
-    // Check if super admin is verified
-    if (!admin.is_verified) {
-      res.status(401).json({ message: 'Please verify your email before logging in' });
-      return;
-    }
-
     // Check if password matches
     const isMatch = await bcrypt.compare(password, admin.password);
 
@@ -147,6 +133,49 @@ export const getSuperAdminProfile = async (req: Request, res: Response): Promise
     }
 
     res.json(admins[0]);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Check verification status and resend token if needed
+// @route   POST /api/super-admin/resend-verification
+// @access  Public
+export const resendVerification = async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body;
+
+  try {
+    // Find super admin by email
+    const admins = await query('SELECT * FROM SuperAdmins WHERE email = ?', [email]);
+
+    if (admins.length === 0) {
+      res.status(404).json({ message: 'No account found with this email' });
+      return;
+    }
+
+    const admin = admins[0];
+
+    if (admin.is_verified) {
+      res.status(400).json({ message: 'This account is already verified' });
+      return;
+    }
+
+    // Generate new verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiry = new Date();
+    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // Token valid for 24 hours
+
+    // Update verification token
+    await query(
+      'UPDATE SuperAdmins SET verification_token = ?, token_expiry = ? WHERE super_admin_id = ?',
+      [verificationToken, tokenExpiry, admin.super_admin_id]
+    );
+
+    res.status(200).json({
+      message: 'New verification token generated',
+      verification_token: verificationToken
+    });
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ message: error.message || 'Server error' });

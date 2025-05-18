@@ -187,7 +187,7 @@ export const getTicketById = async (req: Request, res: Response): Promise<void> 
 // @access  Private
 export const getUserTickets = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user_id = req.user?.user_id;
+    const user_id = req.user?.id;
 
     if (!user_id) {
       res.status(401).json({ message: 'User not authenticated' });

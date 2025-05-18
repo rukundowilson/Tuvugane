@@ -3,16 +3,18 @@ import jwt from 'jsonwebtoken';
 import { query } from '../config/db';
 
 interface JwtPayload {
-  user_id: number;
-  email: string;
-  role: string;
+  id: number;
+  iat: number;
+  exp: number;
 }
 
 // Extend Express Request type to include user
 declare global {
   namespace Express {
     interface Request {
-      user?: JwtPayload;
+      user?: {
+        id: number;
+      };
     }
   }
 }
@@ -36,14 +38,17 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as JwtPayload;
 
       // Add user to request
-      req.user = decoded;
+      req.user = {
+        id: decoded.id
+      };
 
       next();
     } catch (error) {
-      console.error(error);
+      console.error('Token verification error:', error);
       res.status(401).json({ message: 'Not authorized, token failed' });
     }
   } catch (error) {
+    console.error('Auth middleware error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 }; 
