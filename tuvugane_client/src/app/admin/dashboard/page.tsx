@@ -140,6 +140,11 @@ const AdminDashboard: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link href="/admin/superadmin/categories" className="text-primary-600 hover:text-primary-800">
+                  Manage Categories
+                </Link>
+              </li>
+              <li>
                 <Link href="/admin/dashboard/settings" className="text-primary-600 hover:text-primary-800">
                   System Settings
                 </Link>

@@ -55,14 +55,14 @@ export default function Nav() {
         <div className="flex items-center space-x-4">
           {isLoggedIn ? (
             <>
-              <Link href="/dashboard" className="hidden md:block text-gray-600 hover:text-primary-600 transition">
+              <Link href="/citizen/dashboard" className="hidden md:block text-gray-600 hover:text-primary-600 transition">
                 Dashboard
               </Link>
               <div className="hidden md:block text-sm text-gray-700">
                 {user?.name && <span>Hi, {user.name.split(' ')[0]}</span>}
               </div>
               <LogoutButton className="hidden md:block text-gray-600 hover:text-primary-600 transition" />
-              <Link href="/dashboard/new-complaint" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition">
+              <Link href="/citizen/dashboard/new-complaint" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition">
                 Submit Complaint
               </Link>
             </>
@@ -95,8 +95,8 @@ export default function Nav() {
         
         {isLoggedIn ? (
           <>
-            <Link href="/dashboard" className="block py-2 text-gray-600 hover:text-primary-600">Dashboard</Link>
-            <Link href="/dashboard/new-complaint" className="block py-2 text-gray-600 hover:text-primary-600">Submit Complaint</Link>
+            <Link href="/citizen/dashboard" className="block py-2 text-gray-600 hover:text-primary-600">Dashboard</Link>
+            <Link href="/citizen/dashboard/new-complaint" className="block py-2 text-gray-600 hover:text-primary-600">Submit Complaint</Link>
             <LogoutButton className="block py-2 text-gray-600 hover:text-primary-600 w-full text-left" />
           </>
         ) : (

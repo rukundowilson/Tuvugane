@@ -43,11 +43,10 @@ const Login: React.FC = () => {
       
       // Store user data and token in localStorage
       localStorage.setItem('userData', JSON.stringify(userData));
-      localStorage.setItem('authToken', userData.token);
-      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userToken', userData.token);
       
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Redirect to citizen dashboard
+      router.push('/citizen/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials and try again.');
       console.error(err);

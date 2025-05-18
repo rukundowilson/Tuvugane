@@ -10,9 +10,11 @@ import { protect } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-// All routes are protected and require authentication
+// Public routes
+router.get('/', getAgencies);
+
+// Protected routes
 router.post('/', protect, createAgency);
-router.get('/', protect, getAgencies);
 router.get('/:id', protect, getAgencyById);
 router.put('/:id', protect, updateAgency);
 router.delete('/:id', protect, deleteAgency);

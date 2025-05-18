@@ -90,7 +90,7 @@ export const apiService = {
   // Helper method to get stored authentication token
   getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken');
+      return localStorage.getItem('userToken');
     }
     return null;
   }

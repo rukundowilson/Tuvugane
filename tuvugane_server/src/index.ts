@@ -9,6 +9,9 @@ import userRoutes from './routes/userRoutes';
 import superAdminRoutes from './routes/superAdminRoutes';
 import agencyRoutes from './routes/agencyRoutes';
 import adminRoutes from './routes/adminRoutes';
+import categoryRoutes from './routes/categoryRoutes';
+import ticketRoutes from './routes/ticketRoutes';
+import { Request, Response, NextFunction } from 'express';
 
 dotenv.config();
 
@@ -28,9 +31,17 @@ app.use('/api/users', userRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/agencies', agencyRoutes);
 app.use('/api/admins', adminRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Tuvugane API' });
+});
+
+// Add global error handler at the end
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Global error handler:', err);
+  res.status(500).json({ message: 'Internal server error (global handler)' });
 });
 
 const startServer = async () => {
