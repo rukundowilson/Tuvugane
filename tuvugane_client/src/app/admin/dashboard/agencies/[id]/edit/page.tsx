@@ -13,7 +13,7 @@ interface Agency {
   email: string | null;
 }
 
-export default function EditAgency({ params }: { params: { id: string } }) {
+export default function EditAgency({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
@@ -27,6 +27,9 @@ export default function EditAgency({ params }: { params: { id: string } }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   
+  const resolvedParams = React.use(params);
+  const { id } = resolvedParams;
+  
   useEffect(() => {
     const fetchAgency = async () => {
       try {
@@ -36,7 +39,7 @@ export default function EditAgency({ params }: { params: { id: string } }) {
           throw new Error('Authentication token not found');
         }
         
-        const agency = await apiService.get<Agency>(`/agencies/${params.id}`, token);
+        const agency = await apiService.get<Agency>(`/agencies/${id}`, token);
         setFormData({
           name: agency.name,
           description: agency.description || '',
@@ -53,7 +56,7 @@ export default function EditAgency({ params }: { params: { id: string } }) {
     };
     
     fetchAgency();
-  }, [params.id]);
+  }, [id]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -74,7 +77,7 @@ export default function EditAgency({ params }: { params: { id: string } }) {
         throw new Error('Authentication token not found');
       }
       
-      await apiService.put(`/agencies/${params.id}`, formData, token);
+      await apiService.put(`/agencies/${id}`, formData, token);
       router.push('/admin/dashboard/agencies');
     } catch (err: any) {
       setError(err.message || 'Failed to update agency. Please try again.');

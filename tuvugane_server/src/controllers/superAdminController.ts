@@ -139,6 +139,22 @@ export const getSuperAdminProfile = async (req: Request, res: Response): Promise
   }
 };
 
+// @desc    Get all super admins
+// @route   GET /api/super-admin
+// @access  Private (Super Admin only)
+export const getAllSuperAdmins = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const superAdmins = await query(
+      'SELECT super_admin_id, name, email, phone, created_at FROM SuperAdmins ORDER BY name ASC'
+    );
+    
+    res.json(superAdmins);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
 // @desc    Check verification status and resend token if needed
 // @route   POST /api/super-admin/resend-verification
 // @access  Public

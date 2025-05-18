@@ -187,8 +187,14 @@ const Tuvugane: React.FC = () => {
             </div>
             
             <div className="mt-16 text-center">
-              <Link href="/submit-anonymous" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 inline-block font-medium transition">
+              <Link href="/submit-anonymous" className="bg-primary-600 text-white px-8 py-3 rounded-md hover:bg-primary-700 inline-block font-medium transition mr-4">
                 Submit Anonymously
+              </Link>
+              <Link 
+                href="/admin/login"
+                className="bg-gray-700 text-white border border-gray-700 px-8 py-3 rounded-md hover:bg-gray-800 inline-block font-medium transition"
+              >
+                Super Admin Portal
               </Link>
             </div>
           </div>

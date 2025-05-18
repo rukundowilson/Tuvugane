@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { apiService } from '@/services/api';
 
 interface VerifyEmailProps {
-  params: {
+  params: Promise<{
     token: string;
-  };
+  }>;
 }
 
 const VerifyEmail: React.FC<VerifyEmailProps> = ({ params }) => {
-  const { token } = params;
+  const resolvedParams = React.use(params);
+  const { token } = resolvedParams;
   const [verifying, setVerifying] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');

@@ -4,23 +4,42 @@ import { useRouter } from 'next/navigation';
 
 interface AdminAuthGuardProps {
   children: React.ReactNode;
+  adminType?: 'super-admin' | 'agency-admin' | 'any';
 }
 
-const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({ children }) => {
+const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({ children, adminType = 'any' }) => {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if admin is logged in
-    const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
-    const token = localStorage.getItem('adminToken');
+    // Check which type of admin is logged in
+    const isSuperAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+    const isAgencyAdminLoggedIn = localStorage.getItem('isAgencyAdminLoggedIn') === 'true';
+    const storedAdminType = localStorage.getItem('adminType');
     
-    if (!isLoggedIn || !token) {
+    const superAdminToken = localStorage.getItem('adminToken');
+    const agencyAdminToken = localStorage.getItem('agencyAdminToken');
+    
+    let hasAccess = false;
+    
+    if (adminType === 'any') {
+      // Any admin type is allowed
+      hasAccess = (isSuperAdminLoggedIn && !!superAdminToken) || 
+                 (isAgencyAdminLoggedIn && !!agencyAdminToken);
+    } else if (adminType === 'super-admin') {
+      // Only super admin is allowed
+      hasAccess = isSuperAdminLoggedIn && !!superAdminToken && storedAdminType === 'super-admin';
+    } else if (adminType === 'agency-admin') {
+      // Only agency admin is allowed
+      hasAccess = isAgencyAdminLoggedIn && !!agencyAdminToken && storedAdminType === 'agency-admin';
+    }
+    
+    if (!hasAccess) {
       router.push('/admin/login');
     } else {
       setIsAuthenticated(true);
     }
-  }, [router]);
+  }, [router, adminType]);
 
   // Show loading state while checking authentication
   if (isAuthenticated === null) {
