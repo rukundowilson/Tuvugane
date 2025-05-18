@@ -241,7 +241,7 @@ export default function AgencyAdminsPage({ params }: { params: Promise<{ id: str
         throw new Error('Authentication token not found');
       }
       
-      const data = await apiService.get<Admin[]>(`/admins/agency/${agencyId}`, token);
+      const data = await apiService.get<Admin[]>(`/admins/by-agency/${agencyId}`, token);
       setAdmins(data);
     } catch (err: any) {
       setError(err.message || 'Failed to load admins');
