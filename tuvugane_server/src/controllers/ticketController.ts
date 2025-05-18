@@ -180,4 +180,35 @@ export const getTicketById = async (req: Request, res: Response): Promise<void> 
     console.error(error);
     res.status(500).json({ message: error.message || 'Server error' });
   }
+};
+
+// @desc    Get user's tickets
+// @route   GET /api/tickets/user
+// @access  Private
+export const getUserTickets = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user_id = req.user?.user_id;
+
+    if (!user_id) {
+      res.status(401).json({ message: 'User not authenticated' });
+      return;
+    }
+
+    // Get user's tickets with category names
+    const tickets = await query(`
+      SELECT t.*, c.name as category_name 
+      FROM Tickets t
+      LEFT JOIN Categories c ON t.category_id = c.category_id
+      WHERE t.user_id = ?
+      ORDER BY t.created_at DESC
+    `, [user_id]);
+
+    res.status(200).json({
+      message: 'Tickets retrieved successfully',
+      tickets
+    });
+  } catch (error: any) {
+    console.error('getUserTickets error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
 }; 

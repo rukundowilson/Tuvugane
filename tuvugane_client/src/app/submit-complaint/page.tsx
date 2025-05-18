@@ -132,26 +132,26 @@ const SubmitComplaint: React.FC = () => {
       formDataToSend.append('agency_id', formData.agency_id); // Should be ID
 
       if (formData.attachments) {
-        formData.attachments.forEach(file => {
-          formDataToSend.append('attachments', file);
-        });
-      }
-
+          formData.attachments.forEach(file => {
+            formDataToSend.append('attachments', file);
+          });
+        }
+      
       if (user) {
         formDataToSend.append('user_id', user.user_id?.toString() || '');
         formDataToSend.append('is_anonymous', String(user.is_anonymous || false));
       }
-
+      
       const response = await fetch('http://localhost:5000/api/tickets', {
         method: 'POST',
         body: formDataToSend
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Submission failed');
       }
-
+      
       const data = await response.json();
       setComplaintId(data.complaintId);
       setSuccess(true);

@@ -13,11 +13,14 @@ interface UserData {
 }
 
 interface Complaint {
-  complaint_id: number;
-  title: string;
+  ticket_id: number;
+  subject: string;
+  description: string;
   status: string;
   created_at: string;
-  category: string;
+  category_id: number;
+  category_name?: string;
+  location: string;
 }
 
 const CitizenDashboard: React.FC = () => {
@@ -61,12 +64,29 @@ const CitizenDashboard: React.FC = () => {
     fetchUserData();
   }, [router]);
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'in progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'resolved':
+        return 'bg-green-100 text-green-800';
+      case 'closed':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-700">Loading your dashboard...</p>
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading your complaints...</p>
+          </div>
         </div>
       </div>
     );
@@ -75,8 +95,8 @@ const CitizenDashboard: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full mx-auto">
-          <div className="bg-red-50 border-l-4 border-red-400 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -99,124 +119,90 @@ const CitizenDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Citizen Dashboard</h1>
-              <p className="text-gray-600 mt-1">Welcome to your personal dashboard</p>
-            </div>
-            <div className="mt-4 md:mt-0">
-              <Link 
-                href="/submit-complaint"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">My Complaints</h1>
+          <Link
+            href="/citizen/dashboard/new-complaint"
+            className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition"
+          >
+            Submit New Complaint
+          </Link>
+        </div>
+
+        {complaints.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No complaints</h3>
+            <p className="mt-1 text-sm text-gray-500">Get started by submitting a new complaint.</p>
+            <div className="mt-6">
+              <Link
+                href="/citizen/dashboard/new-complaint"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 Submit New Complaint
               </Link>
             </div>
           </div>
-        </div>
-
-        {/* Profile Section */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Your Profile</h2>
-          </div>
-          
-          <div className="p-6">
-            {user && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Name</p>
-                    <p className="mt-1 text-sm text-gray-900">{user.name}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Email</p>
-                    <p className="mt-1 text-sm text-gray-900">{user.email}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Phone</p>
-                    <p className="mt-1 text-sm text-gray-900">{user.phone || 'Not provided'}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Member Since</p>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Complaints Section */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Your Recent Complaints</h2>
-          </div>
-          
-          <div className="p-6">
-            {complaints.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {complaints.map((complaint) => (
-                      <tr key={complaint.complaint_id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{complaint.title}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{complaint.category}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            ${complaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                              complaint.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              complaint.status === 'resolved' ? 'bg-green-100 text-green-800' :
-                              'bg-gray-100 text-gray-800'}`}>
-                            {complaint.status.replace('_', ' ')}
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <ul className="divide-y divide-gray-200">
+              {complaints.map((complaint) => (
+                <li key={complaint.ticket_id}>
+                  <Link href={`/citizen/dashboard/complaints/${complaint.ticket_id}`} className="block hover:bg-gray-50">
+                    <div className="px-4 py-4 sm:px-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-primary-600 truncate">
+                            {complaint.subject}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                            {complaint.description}
+                          </p>
+                        </div>
+                        <div className="ml-4 flex-shrink-0">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(complaint.status)}`}>
+                            {complaint.status}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(complaint.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <Link 
-                            href={`/track-complaint?id=${complaint.complaint_id}`}
-                            className="text-primary-600 hover:text-primary-900"
-                          >
-                            View Details
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-gray-500">You haven't submitted any complaints yet.</p>
-                <Link 
-                  href="/submit-complaint"
-                  className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                >
-                  Submit Your First Complaint
-                </Link>
-              </div>
-            )}
+                        </div>
+                      </div>
+                      <div className="mt-2 sm:flex sm:justify-between">
+                        <div className="sm:flex">
+                          <p className="flex items-center text-sm text-gray-500">
+                            <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                            </svg>
+                            {complaint.location}
+                          </p>
+                          {complaint.category_name && (
+                            <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                              <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-4.992 0H4a1 1 0 110-2h3V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-4.992 0H4a1 1 0 110-2h3v-1a1 1 0 011-1z" clipRule="evenodd" />
+                              </svg>
+                              {complaint.category_name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                          <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                          </svg>
+                          <p>
+                            Submitted on{' '}
+                            {new Date(complaint.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
