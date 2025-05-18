@@ -13,6 +13,11 @@ interface Agency {
   name: string;
 }
 
+// Define a type for the possible API responses
+type ApiResponse = {
+  [key: string]: any;
+};
+
 const NewComplaint: React.FC = () => {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -47,17 +52,78 @@ const NewComplaint: React.FC = () => {
           setUserData(JSON.parse(storedUserData));
         }
 
-        // Fetch categories and agencies in parallel
-        const [categoriesData, agenciesData] = await Promise.all([
-          apiService.get<Category[]>('/categories', token),
-          apiService.get<Agency[]>('/agencies', token)
-        ]);
+        // Setup default fallback data in case API fails
+        let categoriesData: Category[] = [];
+        let agenciesData: Agency[] = [];
 
+        // Fetch categories
+        try {
+          const response = await apiService.get<ApiResponse>('/categories', token);
+          console.log('Categories response:', response);
+          
+          if (response) {
+            if (Array.isArray(response)) {
+              categoriesData = response as Category[];
+            } else if ((response as ApiResponse).categories && Array.isArray((response as ApiResponse).categories)) {
+              categoriesData = (response as ApiResponse).categories as Category[];
+            } else if ((response as ApiResponse).data && Array.isArray((response as ApiResponse).data)) {
+              categoriesData = (response as ApiResponse).data as Category[];
+            } else {
+              console.error('Unexpected categories format:', response);
+              // Try to extract categories if it's some custom format
+              const anyResponse = response as any;
+              if (anyResponse && typeof anyResponse === 'object') {
+                // Look for any array property that might contain categories
+                const possibleArrays = Object.values(anyResponse).filter(val => Array.isArray(val));
+                if (possibleArrays.length > 0) {
+                  // Use the first array found
+                  categoriesData = possibleArrays[0] as Category[];
+                  console.log('Found potential categories array:', categoriesData);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch categories:', error);
+        }
+
+        // Fetch agencies
+        try {
+          const response = await apiService.get<ApiResponse>('/agencies', token);
+          console.log('Agencies response:', response);
+          
+          if (response) {
+            if (Array.isArray(response)) {
+              agenciesData = response as Agency[];
+            } else if ((response as ApiResponse).agencies && Array.isArray((response as ApiResponse).agencies)) {
+              agenciesData = (response as ApiResponse).agencies as Agency[];
+            } else if ((response as ApiResponse).data && Array.isArray((response as ApiResponse).data)) {
+              agenciesData = (response as ApiResponse).data as Agency[];
+            } else {
+              console.error('Unexpected agencies format:', response);
+              // Try to extract agencies if it's some custom format
+              const anyResponse = response as any;
+              if (anyResponse && typeof anyResponse === 'object') {
+                // Look for any array property that might contain agencies
+                const possibleArrays = Object.values(anyResponse).filter(val => Array.isArray(val));
+                if (possibleArrays.length > 0) {
+                  // Use the first array found
+                  agenciesData = possibleArrays[0] as Agency[];
+                  console.log('Found potential agencies array:', agenciesData);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch agencies:', error);
+        }
+
+        // Set the data regardless of success or failure
         setCategories(categoriesData);
         setAgencies(agenciesData);
       } catch (err: any) {
         setError(err.message || 'Failed to load required data');
-        console.error(err);
+        console.error('Main error:', err);
       } finally {
         setLoading(false);
       }
@@ -209,11 +275,15 @@ const NewComplaint: React.FC = () => {
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">Select a category</option>
-                  {categories.map(category => (
-                    <option key={category.category_id} value={category.category_id}>
-                      {category.name}
-                    </option>
-                  ))}
+                  {categories && categories.length > 0 ? (
+                    categories.map(category => (
+                      <option key={category.category_id || Math.random()} value={category.category_id}>
+                        {category.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No categories available</option>
+                  )}
                 </select>
               </div>
 
@@ -230,11 +300,15 @@ const NewComplaint: React.FC = () => {
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">Select an agency</option>
-                  {agencies.map(agency => (
-                    <option key={agency.agency_id} value={agency.agency_id}>
-                      {agency.name}
-                    </option>
-                  ))}
+                  {agencies && agencies.length > 0 ? (
+                    agencies.map(agency => (
+                      <option key={agency.agency_id || Math.random()} value={agency.agency_id}>
+                        {agency.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No agencies available</option>
+                  )}
                 </select>
               </div>
             </div>

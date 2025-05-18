@@ -4,9 +4,11 @@ import {
   loginSuperAdmin, 
   verifySuperAdmin, 
   getSuperAdminProfile,
-  resendVerification
+  resendVerification,
+  getAllSuperAdmins
 } from '../controllers/superAdminController';
-import { protect } from '../middleware/authMiddleware';
+import { createAdmin } from '../controllers/adminController';
+import { protect, superAdminOnly } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -17,6 +19,10 @@ router.get('/verify/:token', verifySuperAdmin);
 router.post('/resend-verification', resendVerification);
 
 // Protected routes
-router.get('/profile', protect, getSuperAdminProfile);
+router.get('/profile', protect, superAdminOnly, getSuperAdminProfile);
+router.get('/', protect, superAdminOnly, getAllSuperAdmins);
+
+// Admin management routes
+router.post('/create-admin', protect, superAdminOnly, createAdmin);
 
 export default router; 

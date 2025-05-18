@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '@/services/api';
 import InstitutionModal from '../../components/InstitutionModal';
+import AdminCreationModal from '../../components/AdminCreationModal';
 
 interface Institution {
   id: number;
@@ -18,6 +19,8 @@ const InstitutionsManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   
   const fetchInstitutions = async () => {
     try {
@@ -43,6 +46,11 @@ const InstitutionsManagement: React.FC = () => {
   
   const handleCreateSuccess = () => {
     fetchInstitutions();
+  };
+
+  const handleCreateAdmin = (institution: Institution) => {
+    setSelectedInstitution(institution);
+    setIsAdminModalOpen(true);
   };
   
   return (
@@ -132,10 +140,18 @@ const InstitutionsManagement: React.FC = () => {
                       <p className="text-lg font-medium text-primary-600 truncate">
                         {institution.name}
                       </p>
-                      <div className="ml-2 flex-shrink-0 flex">
-                        <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Active
-                        </p>
+                      <div className="ml-2 flex space-x-2">
+                        <button
+                          onClick={() => handleCreateAdmin(institution)}
+                          className="px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                          Create Admin
+                        </button>
+                        <div className="flex-shrink-0">
+                          <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Active
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
@@ -200,6 +216,16 @@ const InstitutionsManagement: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleCreateSuccess}
       />
+
+      {selectedInstitution && (
+        <AdminCreationModal
+          isOpen={isAdminModalOpen}
+          institutionId={selectedInstitution.id}
+          institutionName={selectedInstitution.name}
+          onClose={() => setIsAdminModalOpen(false)}
+          onSuccess={handleCreateSuccess}
+        />
+      )}
     </div>
   );
 };

@@ -51,4 +51,28 @@ export const protect = async (req: Request, res: Response, next: NextFunction): 
     console.error('Auth middleware error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+// Middleware to check if a user is a Super Admin
+export const superAdminOnly = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Not authorized, no user found' });
+      return;
+    }
+
+    // Check if the user ID is in the SuperAdmins table
+    const superAdmins = await query('SELECT * FROM SuperAdmins WHERE super_admin_id = ?', [req.user.id]);
+
+    if (superAdmins.length === 0) {
+      res.status(403).json({ message: 'Not authorized, super admin access required' });
+      return;
+    }
+
+    // User is a super admin, proceed
+    next();
+  } catch (error) {
+    console.error('Super admin check error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 }; 

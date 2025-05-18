@@ -10,6 +10,7 @@ export default function Nav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ name: string } | null>(null);
+  const [showAdminLinks, setShowAdminLinks] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -30,6 +31,10 @@ export default function Nav() {
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const toggleAdminLinks = () => {
+    setShowAdminLinks(!showAdminLinks);
   };
 
   return (
@@ -68,6 +73,24 @@ export default function Nav() {
             </>
           ) : (
             <>
+              <div className="hidden md:block relative">
+                <button 
+                  onClick={toggleAdminLinks} 
+                  className="text-gray-600 hover:text-primary-600 transition flex items-center"
+                >
+                  Admin
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`ml-1 h-4 w-4 transform transition-transform ${showAdminLinks ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showAdminLinks && (
+                  <div className="absolute mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 right-0">
+                    <Link href="/admin/login" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
+                      Super Admin Login
+                    </Link>
+                  </div>
+                )}
+              </div>
               <Link href="/login" className="hidden md:block text-gray-600 hover:text-primary-600 transition">
                 Login
               </Link>
@@ -101,6 +124,12 @@ export default function Nav() {
           </>
         ) : (
           <>
+            <div className="py-2">
+              <div className="font-medium text-gray-800 mb-1">Admin Access</div>
+              <Link href="/admin/login" className="block py-1 pl-3 text-gray-600 hover:text-primary-600">
+                Super Admin Login
+              </Link>
+            </div>
             <Link href="/login" className="block py-2 text-gray-600 hover:text-primary-600">Login</Link>
             <Link href="/register" className="block py-2 text-gray-600 hover:text-primary-600">Register</Link>
             <Link href="/submit-anonymous" className="block py-2 text-gray-600 hover:text-primary-600">Submit Anonymously</Link>

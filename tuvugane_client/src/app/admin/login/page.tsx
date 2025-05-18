@@ -1,11 +1,11 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiService } from '@/services/api';
 
 interface SuperAdminLoginResponse {
-  super_admin_id: number;
+  super_admin_id?: number;
   name: string;
   email: string;
   phone?: string;
@@ -35,7 +35,7 @@ const SuperAdminLogin: React.FC = () => {
     setError('');
 
     try {
-      // Call the login API endpoint
+      // Call the super admin login API endpoint
       const adminData = await apiService.post<SuperAdminLoginResponse>('/super-admin/login', {
         email: formData.email,
         password: formData.password
@@ -45,8 +45,9 @@ const SuperAdminLogin: React.FC = () => {
       localStorage.setItem('adminData', JSON.stringify(adminData));
       localStorage.setItem('adminToken', adminData.token);
       localStorage.setItem('isAdminLoggedIn', 'true');
+      localStorage.setItem('adminType', 'super-admin');
       
-      // Redirect to admin dashboard
+      // Redirect to super admin dashboard
       router.push('/admin/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials and try again.');
@@ -64,7 +65,7 @@ const SuperAdminLogin: React.FC = () => {
             Super Admin Login
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Please sign in to access the admin dashboard
+            Please sign in to access the super admin dashboard
           </p>
         </div>
         
@@ -130,15 +131,9 @@ const SuperAdminLogin: React.FC = () => {
             </button>
           </div>
           
-          <div className="text-center">
+          <div className="text-center mt-4">
             <Link href="/admin/register" className="font-medium text-primary-600 hover:text-primary-500">
               Register as Super Admin
-            </Link>
-          </div>
-          
-          <div className="text-center mt-4">
-            <Link href="/" className="font-medium text-gray-600 hover:text-gray-500">
-              Back to home
             </Link>
           </div>
         </form>

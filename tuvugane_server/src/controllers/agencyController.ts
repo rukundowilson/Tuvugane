@@ -194,3 +194,4 @@ export const deleteAgency = async (req: Request, res: Response): Promise<void> =
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
+

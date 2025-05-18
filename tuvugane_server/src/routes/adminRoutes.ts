@@ -15,12 +15,12 @@ const router = express.Router();
 
 // Public routes
 router.post('/login', loginAdmin);
+router.get('/by-agency/:agencyId', getAdminsByAgency);
 
 // Protected routes
 router.post('/', protect, createAdmin);
 router.get('/', protect, getAdmins);
 router.get('/profile', protect, getAdminProfile);
-router.get('/agency/:agencyId', protect, getAdminsByAgency);
 router.get('/:id', protect, getAdminById);
 router.put('/:id', protect, updateAdmin);
 router.delete('/:id', protect, deleteAdmin);

@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    // Await the params Promise before accessing its properties
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
     
     // Remove "COMP-" prefix if present
     const ticketId = id.startsWith('COMP-') ? id.substring(5) : id;
