@@ -19,7 +19,7 @@ export const createAdmin = async (req: Request, res: Response): Promise<void> =>
     }
 
     // Check if admin with the same email already exists
-    const existingAdmins = await query('SELECT * FROM Admins WHERE email = ?', [email]);
+    const existingAdmins = await query('SELECT * FROM admins WHERE email = ?', [email]);
     
     if (existingAdmins.length > 0) {
       res.status(400).json({ message: 'An admin with this email already exists' });
@@ -27,7 +27,7 @@ export const createAdmin = async (req: Request, res: Response): Promise<void> =>
     }
 
     // Check if the agency exists
-    const agencies = await query('SELECT * FROM Agencies WHERE agency_id = ?', [agency_id]);
+    const agencies = await query('SELECT * FROM agencies WHERE agency_id = ?', [agency_id]);
     
     if (agencies.length === 0) {
       res.status(400).json({ message: 'The specified agency does not exist' });
@@ -40,14 +40,14 @@ export const createAdmin = async (req: Request, res: Response): Promise<void> =>
 
     // Insert the new admin
     const result = await query(
-      'INSERT INTO Admins (name, email, password_hash, agency_id) VALUES (?, ?, ?, ?)',
+      'INSERT INTO admins (name, email, password_hash, agency_id) VALUES (?, ?, ?, ?)',
       [name, email, hashedPassword, agency_id]
     );
 
     if (result.insertId) {
       // Fetch the newly created admin
       const admins = await query(
-        'SELECT admin_id, name, email, agency_id, created_at FROM Admins WHERE admin_id = ?',
+        'SELECT admin_id, name, email, agency_id, created_at FROM admins WHERE admin_id = ?',
         [result.insertId]
       );
       
@@ -81,8 +81,8 @@ export const getAdmins = async (req: Request, res: Response): Promise<void> => {
     // Join with Agencies table to get agency name
     const admins = await query(`
       SELECT a.admin_id, a.name, a.email, a.agency_id, a.created_at, ag.name as agency_name
-      FROM Admins a
-      LEFT JOIN Agencies ag ON a.agency_id = ag.agency_id
+      FROM admins a
+      LEFT JOIN agencies ag ON a.agency_id = ag.agency_id
       ORDER BY a.name ASC
     `);
     
@@ -110,7 +110,7 @@ export const getAdminsByAgency = async (req: Request, res: Response): Promise<vo
     
     const admins = await query(`
       SELECT admin_id, name, email, agency_id, created_at
-      FROM Admins
+      FROM admins
       WHERE agency_id = ?
       ORDER BY name ASC
     `, [agencyId]);
@@ -158,7 +158,7 @@ export const updateAdmin = async (req: Request, res: Response): Promise<void> =>
     const { name, email, password, agency_id }: UpdateAdminDto = req.body;
     
     // Check if admin exists
-    const admins = await query('SELECT * FROM Admins WHERE admin_id = ?', [id]);
+    const admins = await query('SELECT * FROM admins WHERE admin_id = ?', [id]);
     
     if (admins.length === 0) {
       res.status(404).json({ message: 'Admin not found' });
@@ -167,7 +167,7 @@ export const updateAdmin = async (req: Request, res: Response): Promise<void> =>
     
     // Check if email is being changed and if it already exists
     if (email && email !== admins[0].email) {
-      const emailCheck = await query('SELECT * FROM Admins WHERE email = ? AND admin_id != ?', [email, id]);
+      const emailCheck = await query('SELECT * FROM admins WHERE email = ? AND admin_id != ?', [email, id]);
       
       if (emailCheck.length > 0) {
         res.status(400).json({ message: 'An admin with this email already exists' });
@@ -177,7 +177,7 @@ export const updateAdmin = async (req: Request, res: Response): Promise<void> =>
 
     // Check if agency_id is provided and exists
     if (agency_id) {
-      const agencies = await query('SELECT * FROM Agencies WHERE agency_id = ?', [agency_id]);
+      const agencies = await query('SELECT * FROM agencies WHERE agency_id = ?', [agency_id]);
       
       if (agencies.length === 0) {
         res.status(400).json({ message: 'The specified agency does not exist' });
@@ -229,8 +229,8 @@ export const updateAdmin = async (req: Request, res: Response): Promise<void> =>
     // Fetch the updated admin with agency name
     const updatedAdmins = await query(`
       SELECT a.admin_id, a.name, a.email, a.agency_id, a.created_at, ag.name as agency_name
-      FROM Admins a
-      LEFT JOIN Agencies ag ON a.agency_id = ag.agency_id
+      FROM admins a
+      LEFT JOIN agencies ag ON a.agency_id = ag.agency_id
       WHERE a.admin_id = ?
     `, [id]);
     
@@ -252,7 +252,7 @@ export const deleteAdmin = async (req: Request, res: Response): Promise<void> =>
     const { id } = req.params;
     
     // Check if admin exists
-    const admins = await query('SELECT * FROM Admins WHERE admin_id = ?', [id]);
+    const admins = await query('SELECT * FROM admins WHERE admin_id = ?', [id]);
     
     if (admins.length === 0) {
       res.status(404).json({ message: 'Admin not found' });
@@ -260,7 +260,7 @@ export const deleteAdmin = async (req: Request, res: Response): Promise<void> =>
     }
     
     // Delete the admin
-    await query('DELETE FROM Admins WHERE admin_id = ?', [id]);
+    await query('DELETE FROM admins WHERE admin_id = ?', [id]);
     
     res.json({ message: 'Admin deleted successfully' });
   } catch (error: any) {
@@ -283,7 +283,7 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
     }
     
     // Find admin by email
-    const admins = await query('SELECT * FROM Admins WHERE email = ?', [email]);
+    const admins = await query('SELECT * FROM admins WHERE email = ?', [email]);
     
     console.log('Admin found:', admins.length > 0 ? 'Yes' : 'No');
     

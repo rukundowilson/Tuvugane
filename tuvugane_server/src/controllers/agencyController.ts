@@ -176,13 +176,13 @@ export const deleteAgency = async (req: Request, res: Response): Promise<void> =
     }
     
     // Check if agency has associated admins
-    const admins = await query('SELECT * FROM Admins WHERE agency_id = ?', [id]);
+    const admins = await query('SELECT * FROM admins WHERE agency_id = ?', [id]);
     
     // Warn if agency has associated admins but proceed with deletion
     const hasAdmins = admins.length > 0;
     
     // Delete the agency (Admins will be handled by ON DELETE CASCADE)
-    await query('DELETE FROM Agencies WHERE agency_id = ?', [id]);
+    await query('DELETE FROM agencies WHERE agency_id = ?', [id]);
     
     res.json({ 
       message: hasAdmins 

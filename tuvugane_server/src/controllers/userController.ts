@@ -12,7 +12,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
 
   try {
     // Check if user exists
-    const existingUsers = await query('SELECT * FROM Users WHERE email = ?', [email]);
+    const existingUsers = await query('SELECT * FROM users WHERE email = ?', [email]);
 
     if (existingUsers.length > 0) {
       res.status(400).json({ message: 'User already exists with this email' });
@@ -25,12 +25,12 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
 
     // Create user
     const result = await query(
-      'INSERT INTO Users (name, email, password, phone, is_anonymous) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO users (name, email, password, phone, is_anonymous) VALUES (?, ?, ?, ?, ?)',
       [name, email, hashedPassword, phone || null, 0]
     );
 
     if (result.insertId) {
-      const [user] = await query('SELECT * FROM Users WHERE user_id = ?', [result.insertId]);
+      const [user] = await query('SELECT * FROM users WHERE user_id = ?', [result.insertId]);
       
       res.status(201).json({
         user_id: user.user_id,
@@ -56,7 +56,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
   try {
     // Find user by email
-    const users = await query('SELECT * FROM Users WHERE email = ?', [email]);
+    const users = await query('SELECT * FROM users WHERE email = ?', [email]);
 
     if (users.length === 0) {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -111,7 +111,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
         email,
         phone,
         created_at
-      FROM Users 
+      FROM users 
       WHERE user_id = ?`,
       [decoded.user_id]
     );
@@ -147,7 +147,7 @@ export const getUserDashboard = async (req: Request, res: Response): Promise<voi
 
     // Get user profile
     const users = await query(
-      'SELECT user_id, name, email, phone, created_at FROM Users WHERE user_id = ?',
+      'SELECT user_id, name, email, phone, created_at FROM users WHERE user_id = ?',
       [userId]
     );
 
