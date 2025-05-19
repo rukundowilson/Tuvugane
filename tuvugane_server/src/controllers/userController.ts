@@ -208,4 +208,38 @@ export const getUserDashboard = async (req: Request, res: Response): Promise<voi
     console.error('Error fetching dashboard data:', error);
     res.status(500).json({ message: error.message || 'Server error' });
   }
+};
+
+// @desc    Get user tickets
+// @route   GET /api/users/tickets
+// @access  Private
+export const getUserTickets = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      res.status(401).json({ message: 'Not authorized' });
+      return;
+    }
+
+    // Get user's tickets with category names
+    const tickets = await query(`
+      SELECT 
+        t.*,
+        c.name as category_name,
+        a.name as assigned_agency_name
+      FROM tickets t
+      LEFT JOIN categories c ON t.category_id = c.category_id
+      LEFT JOIN ticketassignments ta ON t.ticket_id = ta.ticket_id
+      LEFT JOIN admins adm ON ta.admin_id = adm.admin_id
+      LEFT JOIN agencies a ON adm.agency_id = a.agency_id
+      WHERE t.user_id = ?
+      ORDER BY t.created_at DESC
+    `, [user_id]);
+
+    res.status(200).json({ tickets });
+  } catch (error: any) {
+    console.error('Error fetching user tickets:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
 }; 

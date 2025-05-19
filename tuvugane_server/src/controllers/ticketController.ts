@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { query } from '../config/db';
-import { CreateTicketDto, CreateTicketAssignmentDto, TicketResponse } from '../models/Ticket';
+import { CreateTicketDto, CreateTicketAssignmentDto, TicketResponse, CreateTicketFeedbackDto } from '../models/Ticket';
 
 // @desc    Create a new ticket
 // @route   POST /api/tickets
@@ -284,6 +284,258 @@ export const getUserTickets = async (req: Request, res: Response): Promise<void>
     });
   } catch (error: any) {
     console.error('getUserTickets error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Get agency's tickets
+// @route   GET /api/tickets/agency/:agencyId
+// @access  Private
+export const getAgencyTickets = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { agencyId } = req.params;
+    
+    if (!agencyId) {
+      res.status(400).json({ message: 'Agency ID is required' });
+      return;
+    }
+
+    // Validate agency exists
+    const agencies = await query('SELECT * FROM agencies WHERE agency_id = ?', [agencyId]);
+    if (agencies.length === 0) {
+      res.status(404).json({ message: 'Agency not found' });
+      return;
+    }
+
+    // Get tickets assigned to admins of this agency
+    const tickets = await query(`
+      SELECT 
+        t.ticket_id,
+        t.subject,
+        t.description,
+        t.status,
+        t.created_at,
+        t.updated_at,
+        t.location,
+        t.is_anonymous,
+        CASE WHEN t.is_anonymous = 1 THEN 'Anonymous' ELSE u.name END as user_name,
+        c.name as category_name
+      FROM tickets t
+      LEFT JOIN users u ON t.user_id = u.user_id
+      LEFT JOIN categories c ON t.category_id = c.category_id
+      LEFT JOIN ticketassignments ta ON t.ticket_id = ta.ticket_id
+      LEFT JOIN admins a ON ta.admin_id = a.admin_id
+      WHERE a.agency_id = ?
+      ORDER BY t.created_at DESC
+    `, [agencyId]);
+
+    res.status(200).json(tickets);
+  } catch (error: any) {
+    console.error('getAgencyTickets error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Add response to a ticket
+// @route   POST /api/tickets/:ticketId/responses
+// @access  Private (Admin only)
+export const addTicketResponse = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ticketId = parseInt(req.params.ticketId);
+    const { message }: { message: string } = req.body;
+    const admin_id = req.user?.id;
+
+    if (!admin_id) {
+      res.status(401).json({ message: 'Not authorized' });
+      return;
+    }
+
+    if (!message) {
+      res.status(400).json({ message: 'Response message is required' });
+      return;
+    }
+
+    // Check if ticket exists
+    const tickets = await query('SELECT * FROM tickets WHERE ticket_id = ?', [ticketId]);
+    if (tickets.length === 0) {
+      res.status(404).json({ message: 'Ticket not found' });
+      return;
+    }
+
+    // Check if admin is assigned to this ticket
+    const assignments = await query(
+      'SELECT * FROM ticketassignments WHERE ticket_id = ? AND admin_id = ?',
+      [ticketId, admin_id]
+    );
+
+    if (assignments.length === 0) {
+      // Check if any admin from the same agency is assigned
+      const adminAgency = await query('SELECT agency_id FROM admins WHERE admin_id = ?', [admin_id]);
+      if (adminAgency.length === 0) {
+        res.status(403).json({ message: 'You are not authorized to respond to this ticket' });
+        return;
+      }
+
+      const agencyId = adminAgency[0].agency_id;
+      
+      const agencyAssignments = await query(`
+        SELECT ta.* 
+        FROM ticketassignments ta
+        JOIN admins a ON ta.admin_id = a.admin_id
+        WHERE ta.ticket_id = ? AND a.agency_id = ?
+      `, [ticketId, agencyId]);
+      
+      if (agencyAssignments.length === 0) {
+        res.status(403).json({ message: 'This ticket is not assigned to your agency' });
+        return;
+      }
+      
+      // If we get here, the admin is from the same agency as an assigned admin
+    }
+
+    // Add response
+    const result = await query(
+      'INSERT INTO ticketresponses (ticket_id, admin_id, message) VALUES (?, ?, ?)',
+      [ticketId, admin_id, message]
+    );
+
+    if (result.insertId) {
+      // Update ticket status to In Progress if it was Pending
+      if (tickets[0].status === 'Pending') {
+        await query(
+          'UPDATE tickets SET status = ? WHERE ticket_id = ?',
+          ['In Progress', ticketId]
+        );
+      }
+
+      // Fetch the response details with admin information
+      const responses = await query(`
+        SELECT 
+          tr.*,
+          a.name as admin_name,
+          a.email as admin_email
+        FROM ticketresponses tr
+        LEFT JOIN admins a ON tr.admin_id = a.admin_id
+        WHERE tr.response_id = ?
+      `, [result.insertId]);
+
+      res.status(201).json({
+        message: 'Response added successfully',
+        response: responses[0]
+      });
+    } else {
+      res.status(400).json({ message: 'Failed to add response' });
+    }
+  } catch (error: any) {
+    console.error('addTicketResponse error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Get responses for a ticket
+// @route   GET /api/tickets/:ticketId/responses
+// @access  Private
+export const getTicketResponses = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ticketId = parseInt(req.params.ticketId);
+
+    // Get ticket responses with admin details
+    const responses = await query(`
+      SELECT 
+        tr.*,
+        a.name as admin_name,
+        a.email as admin_email
+      FROM ticketresponses tr
+      LEFT JOIN admins a ON tr.admin_id = a.admin_id
+      WHERE tr.ticket_id = ?
+      ORDER BY tr.created_at ASC
+    `, [ticketId]);
+
+    res.status(200).json(responses);
+  } catch (error: any) {
+    console.error('getTicketResponses error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+// @desc    Update ticket status
+// @route   PUT /api/tickets/:id/status
+// @access  Private (Admin only)
+export const updateTicketStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const ticketId = parseInt(req.params.id);
+    const { status } = req.body;
+    const admin_id = req.user?.id;
+
+    if (!admin_id) {
+      res.status(401).json({ message: 'Not authorized' });
+      return;
+    }
+
+    if (!status) {
+      res.status(400).json({ message: 'Status is required' });
+      return;
+    }
+
+    // Validate status value
+    const validStatuses = ['Pending', 'Assigned', 'In Progress', 'Resolved', 'Rejected'];
+    if (!validStatuses.includes(status)) {
+      res.status(400).json({ 
+        message: `Invalid status value. Valid values are: ${validStatuses.join(', ')}` 
+      });
+      return;
+    }
+
+    // Check if ticket exists
+    const tickets = await query('SELECT * FROM tickets WHERE ticket_id = ?', [ticketId]);
+    if (tickets.length === 0) {
+      res.status(404).json({ message: 'Ticket not found' });
+      return;
+    }
+
+    // Check if admin is assigned to this ticket
+    const assignments = await query(
+      'SELECT * FROM ticketassignments WHERE ticket_id = ? AND admin_id = ?',
+      [ticketId, admin_id]
+    );
+
+    if (assignments.length === 0) {
+      // Check if any admin from the same agency is assigned
+      const adminAgency = await query('SELECT agency_id FROM admins WHERE admin_id = ?', [admin_id]);
+      if (adminAgency.length === 0) {
+        res.status(403).json({ message: 'You are not authorized to update this ticket' });
+        return;
+      }
+
+      const agencyId = adminAgency[0].agency_id;
+      
+      const agencyAssignments = await query(`
+        SELECT ta.* 
+        FROM ticketassignments ta
+        JOIN admins a ON ta.admin_id = a.admin_id
+        WHERE ta.ticket_id = ? AND a.agency_id = ?
+      `, [ticketId, agencyId]);
+      
+      if (agencyAssignments.length === 0) {
+        res.status(403).json({ message: 'This ticket is not assigned to your agency' });
+        return;
+      }
+      
+      // If we get here, the admin is from the same agency as an assigned admin
+    }
+
+    // Update ticket status
+    await query('UPDATE tickets SET status = ? WHERE ticket_id = ?', [status, ticketId]);
+
+    // Return updated ticket
+    const updatedTicket = await query('SELECT * FROM tickets WHERE ticket_id = ?', [ticketId]);
+
+    res.status(200).json({
+      message: 'Ticket status updated successfully',
+      ticket: updatedTicket[0]
+    });
+  } catch (error: any) {
+    console.error('updateTicketStatus error:', error);
     res.status(500).json({ message: error.message || 'Server error' });
   }
 }; 

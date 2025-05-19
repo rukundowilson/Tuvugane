@@ -1,20 +1,43 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { apiService } from '@/services/api';
+import { useRouter } from 'next/navigation';
+import AdminAuthGuard from '../../components/AdminAuthGuard';
+
+interface AgencyAdmin {
+  admin_id: number;
+  name: string;
+  email: string;
+  agency_id: number;
+  agency_name: string;
+  created_at: string;
+}
 
 interface Complaint {
   ticket_id: number;
   subject: string;
   description: string;
-  status: string;
+  status: 'Pending' | 'Assigned' | 'In Progress' | 'Resolved' | 'Rejected';
   created_at: string;
   user_name?: string;
   is_anonymous: boolean;
   location?: string;
   category_name?: string;
+  photo_url?: string;
+}
+
+interface TicketResponse {
+  response_id: number;
+  ticket_id: number;
+  admin_id: number;
+  message: string;
+  created_at: string;
+  admin_name: string;
+  admin_email: string;
 }
 
 const AgencyComplaintsPage: React.FC = () => {
+  const router = useRouter();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,39 +47,82 @@ const AgencyComplaintsPage: React.FC = () => {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
+  const [responses, setResponses] = useState<TicketResponse[]>([]);
+  const [newResponse, setNewResponse] = useState('');
+  const [sendingResponse, setSendingResponse] = useState(false);
+  const [responseError, setResponseError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchComplaints = async () => {
       try {
         // Get admin data from localStorage
-        const storedAdminData = localStorage.getItem('agencyAdminData');
+        const storedAdminData = localStorage.getItem('adminData');
+        
         if (storedAdminData) {
           const parsedData = JSON.parse(storedAdminData);
           
           // Get token
-          const token = parsedData.token || localStorage.getItem('agencyAdminToken');
+          const token = localStorage.getItem('agencyAdminToken');
           if (!token) throw new Error('Authentication token not found');
           
           // Fetch complaints for this agency
           const agencyId = parsedData.agency_id;
           if (!agencyId) throw new Error('Agency ID not found');
           
+          console.log('Fetching complaints for agency ID:', agencyId);
           const complaintsData = await apiService.get<Complaint[]>(`/tickets/agency/${agencyId}`, token);
           
+          console.log('Fetched complaints:', complaintsData);
           if (Array.isArray(complaintsData)) {
             setComplaints(complaintsData);
+          }
+        } else {
+          // If not found, try to fetch from API
+          const token = localStorage.getItem('agencyAdminToken');
+          
+          if (!token) {
+            throw new Error('Authentication token not found');
+          }
+          
+          try {
+            const response = await apiService.get<AgencyAdmin>('/admins/profile', token);
+            console.log('Admin profile response:', response);
+            localStorage.setItem('adminData', JSON.stringify(response));
+            
+            // After fetching admin data, fetch complaints
+            const agencyId = response.agency_id;
+            if (!agencyId) throw new Error('Agency ID not found');
+            
+            console.log('Fetching complaints for agency ID:', agencyId);
+            const complaintsData = await apiService.get<Complaint[]>(`/tickets/agency/${agencyId}`, token);
+            
+            console.log('Fetched complaints:', complaintsData);
+            if (Array.isArray(complaintsData)) {
+              setComplaints(complaintsData);
+            }
+          } catch (error) {
+            console.error('Error fetching admin profile:', error);
+            throw error;
           }
         }
       } catch (err: any) {
         console.error('Error fetching complaints:', err);
         setError(err.message || 'Failed to load complaints');
+        
+        // Redirect to login if authentication fails
+        if (err.status === 401) {
+          localStorage.removeItem('agencyAdminToken');
+          localStorage.removeItem('isAgencyAdminLoggedIn');
+          localStorage.removeItem('adminType');
+          router.push('/admin/login');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchComplaints();
-  }, []);
+  }, [router]);
 
   const handleStatusChange = async (ticketId: number, newStatus: string) => {
     setUpdateLoading(true);
@@ -74,7 +140,7 @@ const AgencyComplaintsPage: React.FC = () => {
       setComplaints(prevComplaints => 
         prevComplaints.map(complaint => 
           complaint.ticket_id === ticketId 
-            ? { ...complaint, status: newStatus } 
+            ? { ...complaint, status: newStatus as 'Pending' | 'Assigned' | 'In Progress' | 'Resolved' | 'Rejected' } 
             : complaint
         )
       );
@@ -95,15 +161,57 @@ const AgencyComplaintsPage: React.FC = () => {
     }
   };
 
-  const filteredComplaints = complaints.filter(complaint => {
-    if (statusFilter === 'all') return true;
-    return complaint.status === statusFilter;
-  });
+  const fetchResponses = async (ticketId: number) => {
+    try {
+      const token = localStorage.getItem('agencyAdminToken');
+      if (!token) throw new Error('Authentication token not found');
+      
+      const responsesData = await apiService.get<TicketResponse[]>(`/tickets/${ticketId}/responses`, token);
+      setResponses(responsesData);
+    } catch (err: any) {
+      console.error('Error fetching responses:', err);
+    }
+  };
 
-  const openComplaintDetails = (complaint: Complaint) => {
+  const handleSendResponse = async () => {
+    if (!selectedComplaint || !newResponse.trim()) return;
+    
+    setSendingResponse(true);
+    setResponseError(null);
+    
+    try {
+      const token = localStorage.getItem('agencyAdminToken');
+      if (!token) throw new Error('Authentication token not found');
+      
+      await apiService.post(
+        `/tickets/${selectedComplaint.ticket_id}/responses`,
+        { message: newResponse },
+        token
+      );
+      
+      // Refresh responses
+      await fetchResponses(selectedComplaint.ticket_id);
+      
+      // Clear input
+      setNewResponse('');
+    } catch (err: any) {
+      console.error('Error sending response:', err);
+      setResponseError(err.message || 'Failed to send response');
+    } finally {
+      setSendingResponse(false);
+    }
+  };
+
+  const openComplaintDetails = async (complaint: Complaint) => {
     setSelectedComplaint(complaint);
     setUpdateStatus(complaint.status);
+    await fetchResponses(complaint.ticket_id);
   };
+
+  const filteredComplaints = complaints.filter(complaint => {
+    if (statusFilter === 'all') return true;
+    return complaint.status === statusFilter as 'Pending' | 'Assigned' | 'In Progress' | 'Resolved' | 'Rejected';
+  });
 
   if (loading) {
     return (
@@ -136,223 +244,261 @@ const AgencyComplaintsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Complaints Management</h1>
-          <p className="text-gray-600 mt-1">
-            Review and manage citizen complaints assigned to your agency
-          </p>
+    <AdminAuthGuard adminType="agency-admin">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Complaints Management</h1>
+            <p className="text-gray-600 mt-1">
+              Review and manage citizen complaints assigned to your agency
+            </p>
+          </div>
+          
+          <div className="mt-4 md:mt-0">
+            <label htmlFor="status-filter" className="sr-only">Filter by status</label>
+            <select
+              id="status-filter"
+              name="status-filter"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
         </div>
-        
-        <div className="mt-4 md:mt-0">
-          <label htmlFor="status" className="sr-only">Filter by status</label>
-          <select
-            id="status"
-            name="status"
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
-      </div>
 
-      {/* Complaints Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredComplaints.length > 0 ? (
-                filteredComplaints.map((complaint) => (
-                  <tr key={complaint.ticket_id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{complaint.ticket_id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{complaint.subject}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{complaint.location || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{complaint.category_name || 'N/A'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${complaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                          complaint.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
-                          complaint.status === 'resolved' ? 'bg-green-100 text-green-800' : 
-                          'bg-red-100 text-red-800'}`}>
-                        {complaint.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(complaint.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button 
-                        onClick={() => openComplaintDetails(complaint)}
-                        className="text-primary-600 hover:text-primary-900"
-                      >
-                        View Details
-                      </button>
+        {/* Complaints Table */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredComplaints.length > 0 ? (
+                  filteredComplaints.map((complaint) => (
+                    <tr key={complaint.ticket_id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{complaint.ticket_id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{complaint.subject}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{complaint.location || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{complaint.category_name || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${complaint.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            complaint.status === 'Assigned' ? 'bg-purple-100 text-purple-800' :
+                            complaint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : 
+                            complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' : 
+                            'bg-red-100 text-red-800'}`}>
+                          {complaint.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(complaint.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button 
+                          onClick={() => openComplaintDetails(complaint)}
+                          className="text-primary-600 hover:text-primary-900"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No complaints found
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No complaints found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Complaint Details Modal */}
-      {selectedComplaint && (
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div 
-              className="fixed inset-0 transition-opacity" 
-              onClick={() => setSelectedComplaint(null)}
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div 
-              className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Complaint Details
-                    </h3>
-                    <div className="mt-4">
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 font-semibold">Subject:</p>
-                        <p className="mt-1 text-sm text-gray-900">{selectedComplaint.subject}</p>
+        {/* Complaint Details Modal */}
+        {selectedComplaint && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white w-full max-w-3xl rounded-lg shadow-xl overflow-hidden">
+              {/* Modal Header */}
+              <div className="bg-gray-100 px-6 py-4 border-b flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-800">Complaint #{selectedComplaint.ticket_id}</h3>
+                <button 
+                  onClick={() => setSelectedComplaint(null)} 
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Modal Content */}
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
+                {/* Complaint Information */}
+                <div className="space-y-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-700">Subject</h4>
+                        <p>{selectedComplaint.subject}</p>
                       </div>
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 font-semibold">Description:</p>
-                        <p className="mt-1 text-sm text-gray-900 whitespace-pre-line">{selectedComplaint.description}</p>
-                      </div>
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 font-semibold">Location:</p>
-                        <p className="mt-1 text-sm text-gray-900">{selectedComplaint.location || 'N/A'}</p>
-                      </div>
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 font-semibold">Submitted By:</p>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {selectedComplaint.is_anonymous ? 'Anonymous' : selectedComplaint.user_name || 'Citizen'}
-                        </p>
-                      </div>
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 font-semibold">Date Submitted:</p>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {new Date(selectedComplaint.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="mb-4">
-                        <p className="text-sm text-gray-500 font-semibold">Current Status:</p>
-                        <p className="mt-1 text-sm">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            ${selectedComplaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                              selectedComplaint.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
-                              selectedComplaint.status === 'resolved' ? 'bg-green-100 text-green-800' : 
-                              'bg-red-100 text-red-800'}`}>
-                            {selectedComplaint.status}
-                          </span>
-                        </p>
+                      <div>
+                        <h4 className="font-semibold text-gray-700">Status</h4>
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                          ${selectedComplaint.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            selectedComplaint.status === 'Assigned' ? 'bg-purple-100 text-purple-800' :
+                            selectedComplaint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : 
+                            selectedComplaint.status === 'Resolved' ? 'bg-green-100 text-green-800' : 
+                            'bg-red-100 text-red-800'}`}>
+                          {selectedComplaint.status}
+                        </span>
                       </div>
                       
-                      {/* Status Update */}
-                      <div className="mb-4">
-                        <label htmlFor="updateStatus" className="block text-sm font-medium text-gray-700">
-                          Update Status:
-                        </label>
-                        <select
-                          id="updateStatus"
-                          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-                          value={updateStatus}
-                          onChange={(e) => setUpdateStatus(e.target.value)}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="in-progress">In Progress</option>
-                          <option value="resolved">Resolved</option>
-                          <option value="rejected">Rejected</option>
-                        </select>
+                      <div>
+                        <h4 className="font-semibold text-gray-700">Submitted By</h4>
+                        <p>{selectedComplaint.is_anonymous ? 'Anonymous' : selectedComplaint.user_name || 'Citizen'}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-700">Date Submitted</h4>
+                        <p>{new Date(selectedComplaint.created_at).toLocaleString()}</p>
                       </div>
                       
-                      {updateError && (
-                        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-                          <div className="flex">
-                            <div className="flex-shrink-0">
-                              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                              </svg>
+                      <div>
+                        <h4 className="font-semibold text-gray-700">Location</h4>
+                        <p>{selectedComplaint.location || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-700">Category</h4>
+                        <p>{selectedComplaint.category_name || 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-gray-700">Description</h4>
+                      <p className="bg-white p-3 border rounded mt-1 whitespace-pre-line">{selectedComplaint.description}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Status Update */}
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h4 className="font-semibold text-gray-700 mb-3">Update Status</h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <select
+                        id="status-update"
+                        name="status-update"
+                        className="block w-full sm:max-w-[200px] py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        value={updateStatus}
+                        onChange={(e) => setUpdateStatus(e.target.value)}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                      
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(selectedComplaint.ticket_id, updateStatus)}
+                        disabled={updateLoading}
+                        className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                      >
+                        {updateLoading ? 'Updating...' : 'Update Status'}
+                      </button>
+                    </div>
+                    
+                    {updateSuccess && (
+                      <div className="mt-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                        ✓ {updateSuccess}
+                      </div>
+                    )}
+                    
+                    {updateError && (
+                      <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                        ✗ {updateError}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Responses Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h4 className="font-semibold text-gray-700 mb-3">Responses</h4>
+                    
+                    <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
+                      {responses.length === 0 ? (
+                        <div className="text-gray-500 italic text-center py-4">
+                          No responses yet
+                        </div>
+                      ) : (
+                        responses.map((response) => (
+                          <div key={response.response_id} className="bg-white p-3 rounded border">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">{response.admin_name}</p>
+                                <p className="text-sm text-gray-500">{response.admin_email}</p>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                {new Date(response.created_at).toLocaleString()}
+                              </p>
                             </div>
-                            <div className="ml-3">
-                              <p className="text-sm text-red-700">{updateError}</p>
-                            </div>
+                            <p className="mt-2 text-gray-700 border-t pt-2">{response.message}</p>
                           </div>
+                        ))
+                      )}
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-2">Add Response</h4>
+                      <textarea
+                        id="response-text"
+                        name="response-text"
+                        rows={3}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary-500 focus:border-primary-500"
+                        value={newResponse}
+                        onChange={(e) => setNewResponse(e.target.value)}
+                        placeholder="Type your response here..."
+                      />
+                      
+                      {responseError && (
+                        <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                          ✗ {responseError}
                         </div>
                       )}
                       
-                      {updateSuccess && (
-                        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-                          <div className="flex">
-                            <div className="flex-shrink-0">
-                              <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm text-green-700">{updateSuccess}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleSendResponse}
+                        disabled={sendingResponse || !newResponse.trim()}
+                        className="mt-3 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                      >
+                        {sendingResponse ? 'Sending...' : 'Send Response'}
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-6 py-3 border-t">
                 <button
                   type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => handleStatusChange(selectedComplaint.ticket_id, updateStatus)}
-                  disabled={updateLoading || selectedComplaint.status === updateStatus}
-                >
-                  {updateLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Updating...
-                    </>
-                  ) : 'Update Status'}
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   onClick={() => setSelectedComplaint(null)}
                 >
                   Close
@@ -360,9 +506,9 @@ const AgencyComplaintsPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </AdminAuthGuard>
   );
 };
 

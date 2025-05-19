@@ -62,11 +62,11 @@ const Register: React.FC = () => {
       
       // Store user data and token in localStorage
       localStorage.setItem('userData', JSON.stringify(response));
-      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('userToken', response.token);
       localStorage.setItem('isLoggedIn', 'true');
       
       // Redirect to dashboard
-      router.push('/dashboard');
+      router.push('/citizen/dashboard');
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
       console.error(err);
@@ -76,23 +76,48 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full mx-auto space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/submit-anonymous" className="font-medium text-primary-600 hover:text-primary-500">
-              continue as anonymous
-            </Link>
-          </p>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Navigation Links */}
+      <div className="py-6 px-8 flex justify-between items-center border-b border-gray-200">
+        <Link href="/" className="flex items-center space-x-2 text-gray-800 hover:text-primary-600">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <span>Back to Home</span>
+        </Link>
+        <div className="flex items-center space-x-6">
+          <Link 
+            href="/login" 
+            className="text-gray-600 hover:text-primary-600 transition"
+          >
+            Sign In
+          </Link>
+          <Link 
+            href="/submit-anonymous" 
+            className="text-gray-600 hover:text-primary-600 transition"
+          >
+            Submit Anonymously
+          </Link>
         </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div className="mb-4">
+      </div>
+
+      {/* Register Form */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-md w-full space-y-6">
+          <div className="text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-primary-600" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+            </svg>
+            <h2 className="mt-2 text-3xl font-extrabold text-gray-900">
+              Create your account
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Access all features and track your complaints
+            </p>
+          </div>
+
+          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+            <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Name <span className="text-red-500">*</span>
               </label>
@@ -109,7 +134,7 @@ const Register: React.FC = () => {
               />
             </div>
             
-            <div className="mb-4">
+            <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email address <span className="text-red-500">*</span>
               </label>
@@ -129,7 +154,7 @@ const Register: React.FC = () => {
               </p>
             </div>
             
-            <div className="mb-4">
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password <span className="text-red-500">*</span>
               </label>
@@ -147,7 +172,7 @@ const Register: React.FC = () => {
               />
             </div>
             
-            <div className="mb-4">
+            <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password <span className="text-red-500">*</span>
               </label>
@@ -165,7 +190,7 @@ const Register: React.FC = () => {
               />
             </div>
             
-            <div className="mb-4">
+            <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Phone number
               </label>
@@ -181,7 +206,7 @@ const Register: React.FC = () => {
               />
             </div>
             
-            <div className="flex items-center mb-4 mt-6">
+            <div className="flex items-center mt-4">
               <input
                 id="isAnonymous"
                 name="isAnonymous"
@@ -211,45 +236,50 @@ const Register: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
 
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+            {error && (
+              <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
-              {loading ? 'Processing...' : formData.isAnonymous ? 'Continue Anonymously' : 'Register'}
+              {loading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                formData.isAnonymous ? 'Continue Anonymously' : 'Create Account'
+              )}
             </button>
-          </div>
+          </form>
           
           <div className="text-center">
             <p className="mt-2 text-sm text-gray-600">
               Already have an account?{' '}
               <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
-                Sign in
+                Sign in here
               </Link>
             </p>
-            <Link href="/" className="font-medium text-primary-600 hover:text-primary-500 block mt-4">
-              Back to home
-            </Link>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -13,11 +13,22 @@ interface AgencyAdmin {
   created_at: string;
 }
 
+interface Complaint {
+  ticket_id: number;
+  subject: string;
+  status: string;
+  created_at: string;
+  user_name: string;
+  category_name?: string;
+}
+
 const AgencyAdminDashboard: React.FC = () => {
   const router = useRouter();
   const [adminData, setAdminData] = useState<AgencyAdmin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recentComplaints, setRecentComplaints] = useState<Complaint[]>([]);
+  const [complaintsLoading, setComplaintsLoading] = useState(false);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -31,6 +42,9 @@ const AgencyAdminDashboard: React.FC = () => {
         if (storedAdminData) {
           const parsedData = JSON.parse(storedAdminData);
           setAdminData(parsedData);
+          
+          // After setting admin data, fetch recent complaints
+          fetchRecentComplaints(parsedData.agency_id);
         } else {
           // If not found, try to fetch from API
           const token = localStorage.getItem('agencyAdminToken');
@@ -46,6 +60,9 @@ const AgencyAdminDashboard: React.FC = () => {
             console.log('Admin profile response:', response);
             setAdminData(response);
             localStorage.setItem('adminData', JSON.stringify(response));
+            
+            // After fetching admin data, fetch recent complaints
+            fetchRecentComplaints(response.agency_id);
           } catch (error) {
             console.error('Error fetching admin profile:', error);
             throw error;
@@ -64,6 +81,30 @@ const AgencyAdminDashboard: React.FC = () => {
         }
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchRecentComplaints = async (agencyId: number) => {
+      if (!agencyId) {
+        console.error('Cannot fetch complaints: Agency ID is missing');
+        return;
+      }
+      
+      try {
+        setComplaintsLoading(true);
+        const token = localStorage.getItem('agencyAdminToken');
+        
+        if (!token) {
+          throw new Error('Authentication token not found');
+        }
+        
+        const complaints = await apiService.get<Complaint[]>(`/tickets/agency/${agencyId}`, token);
+        // Get only the 5 most recent complaints
+        setRecentComplaints(complaints.slice(0, 5));
+      } catch (err: any) {
+        console.error('Failed to fetch recent complaints:', err);
+      } finally {
+        setComplaintsLoading(false);
       }
     };
 
@@ -168,6 +209,85 @@ const AgencyAdminDashboard: React.FC = () => {
                         </dd>
                       </div>
                     </dl>
+                  </div>
+                </div>
+                
+                {/* Recent Complaints Section */}
+                <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+                  <div className="px-4 py-5 sm:px-6">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      Recent Complaints
+                    </h3>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                      Latest complaints assigned to your agency
+                    </p>
+                  </div>
+                  <div className="border-t border-gray-200">
+                    {complaintsLoading ? (
+                      <div className="text-center py-6">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
+                        <p className="mt-2 text-sm text-gray-500">Loading complaints...</p>
+                      </div>
+                    ) : recentComplaints.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {recentComplaints.map((complaint) => (
+                              <tr key={complaint.ticket_id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{complaint.ticket_id}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{complaint.subject}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{complaint.category_name || 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    ${complaint.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                      complaint.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                                      complaint.status === 'resolved' ? 'bg-green-100 text-green-800' : 
+                                      'bg-red-100 text-red-800'}`}>
+                                    {complaint.status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {new Date(complaint.created_at).toLocaleDateString()}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  <button
+                                    onClick={() => router.push(`/admin/agency/complaints?id=${complaint.ticket_id}`)}
+                                    className="text-primary-600 hover:text-primary-900"
+                                  >
+                                    View Details
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="px-6 py-4 text-center text-sm text-gray-500">
+                        No recent complaints found
+                      </div>
+                    )}
+                    {recentComplaints.length > 0 && (
+                      <div className="px-6 py-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={() => router.push('/admin/agency/complaints')}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                        >
+                          View All Complaints
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
