@@ -393,7 +393,7 @@ const SubmitComplaint: React.FC = () => {
                   <svg className="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
-                  We found recommendations of who may help
+                  We found recommendations for who may help
                 </p>
               )}
               {formData.category_id && filteredAgencies.length === 0 && !loadingAgencies && (
