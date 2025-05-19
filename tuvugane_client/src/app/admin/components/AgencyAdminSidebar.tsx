@@ -10,7 +10,8 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  QueueListIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -57,6 +58,11 @@ const AgencyAdminSidebar: React.FC<SidebarProps> = ({ children }) => {
       name: 'Complaints',
       href: '/admin/agency/complaints',
       icon: TicketIcon,
+    },
+    {
+      name: 'Categories',
+      href: '/admin/agency/categories',
+      icon: QueueListIcon,
     },
     {
       name: 'Staff',
