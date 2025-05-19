@@ -28,9 +28,12 @@ const SubmitComplaint: React.FC = () => {
   } | null>(null);
   
   const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [filteredAgencies, setFilteredAgencies] = useState<Agency[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedCategoryAgency, setSelectedCategoryAgency] = useState<Agency | null>(null);
+  const [loadingCategoryAgency, setLoadingCategoryAgency] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -72,6 +75,7 @@ const SubmitComplaint: React.FC = () => {
         }
         const data = await apiService.get<Agency[]>('/agencies', token);
         setAgencies(data);
+        setFilteredAgencies(data); // Initialize filtered agencies with all agencies
       } catch (err: any) {
         console.error('Failed to load agencies:', err);
         setError('Failed to load agencies. Please try again later.');
@@ -98,12 +102,85 @@ const SubmitComplaint: React.FC = () => {
     fetchCategories();
   }, [searchParams]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Fetch agencies for a specific category
+  const fetchAgenciesForCategory = async (categoryId: string) => {
+    try {
+      if (!categoryId) {
+        setFilteredAgencies(agencies);
+        return;
+      }
+      
+      setLoadingAgencies(true);
+      const response = await apiService.get<{ success: boolean; data: Agency[] }>(`/categories/${categoryId}/agencies`);
+      
+      if (response && response.success && Array.isArray(response.data)) {
+        setFilteredAgencies(response.data);
+      } else {
+        // If no mappings exist, show empty list
+        setFilteredAgencies([]);
+      }
+    } catch (err: any) {
+      console.error('Failed to get agencies for category:', err);
+      setFilteredAgencies([]);
+    } finally {
+      setLoadingAgencies(false);
+    }
+  };
+
+  // Fetch the agency for a selected category
+  const fetchAgencyForCategory = async (categoryId: string) => {
+    try {
+      if (!categoryId) return null;
+      
+      setLoadingCategoryAgency(true);
+      const response = await apiService.get<{ success: boolean; data: Agency }>(`/categories/${categoryId}/agency`);
+      
+      if (response && response.success && response.data) {
+        setSelectedCategoryAgency(response.data);
+        
+        // Auto-select the agency
+        setFormData(prev => ({
+          ...prev,
+          agency_id: response.data.agency_id.toString()
+        }));
+        
+        return response.data;
+      }
+      return null;
+    } catch (err: any) {
+      console.error('Failed to get agency for category:', err);
+      setSelectedCategoryAgency(null);
+      return null;
+    } finally {
+      setLoadingCategoryAgency(false);
+    }
+  };
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    // Clear selected agency when changing category
+    if (name === 'category_id' && value !== formData.category_id) {
+      setSelectedCategoryAgency(null);
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        agency_id: '' // Reset agency selection when category changes
+      }));
+      
+      // Get the agency for this category
+      if (value) {
+        fetchAgencyForCategory(value);
+        fetchAgenciesForCategory(value);
+      } else {
+        setFilteredAgencies(agencies);
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -271,6 +348,16 @@ const SubmitComplaint: React.FC = () => {
                   </option>
                 ))}
               </select>
+              {loadingCategoryAgency && (
+                <p className="mt-1 text-sm text-gray-500">Loading agency information...</p>
+              )}
+              {selectedCategoryAgency && (
+                <div className="mt-2 bg-blue-50 border-l-4 border-blue-400 p-3">
+                  <p className="text-sm text-blue-700">
+                    This category is managed by: <strong>{selectedCategoryAgency.name}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="mb-4">
@@ -284,10 +371,10 @@ const SubmitComplaint: React.FC = () => {
                 value={formData.agency_id}
                 onChange={handleChange}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                disabled={loadingAgencies}
+                disabled={loadingAgencies || !!selectedCategoryAgency}
               >
                 <option value="">Select an agency</option>
-                {agencies.map((agency) => (
+                {filteredAgencies.map((agency) => (
                   <option key={agency.agency_id} value={agency.agency_id}>
                     {agency.name}
                   </option>
@@ -295,6 +382,24 @@ const SubmitComplaint: React.FC = () => {
               </select>
               {loadingAgencies && (
                 <p className="mt-1 text-sm text-gray-500">Loading agencies...</p>
+              )}
+              {selectedCategoryAgency && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Agency automatically selected based on category.
+                </p>
+              )}
+              {formData.category_id && filteredAgencies.length > 0 && !selectedCategoryAgency && !loadingAgencies && (
+                <p className="mt-1 text-sm text-green-600">
+                  <svg className="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  We found recommendations of who may help
+                </p>
+              )}
+              {formData.category_id && filteredAgencies.length === 0 && !loadingAgencies && (
+                <p className="mt-1 text-sm text-red-500">
+                  No agencies are currently mapped to this category. Please select a different category.
+                </p>
               )}
             </div>
             

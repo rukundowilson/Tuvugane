@@ -86,13 +86,13 @@ export default function Nav() {
                 {showAdminLinks && (
                   <div className="absolute mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 right-0">
                     <Link href="/admin/login" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition">
-                      Super Admin Login
+                      Staff login portal
                     </Link>
                   </div>
                 )}
               </div>
               <Link href="/login" className="hidden md:block text-gray-600 hover:text-primary-600 transition">
-                Login
+                Citizen-login-portal
               </Link>
               <Link href="/register" className="hidden md:block text-gray-600 hover:text-primary-600 transition">
                 Register
@@ -127,10 +127,10 @@ export default function Nav() {
             <div className="py-2">
               <div className="font-medium text-gray-800 mb-1">Admin Access</div>
               <Link href="/admin/login" className="block py-1 pl-3 text-gray-600 hover:text-primary-600">
-                Super Admin Login
+                staff Login portal
               </Link>
             </div>
-            <Link href="/login" className="block py-2 text-gray-600 hover:text-primary-600">Login</Link>
+            <Link href="/login" className="block py-2 text-gray-600 hover:text-primary-600">Citizen-login-portal</Link>
             <Link href="/register" className="block py-2 text-gray-600 hover:text-primary-600">Register</Link>
             <Link href="/submit-anonymous" className="block py-2 text-gray-600 hover:text-primary-600">Submit Anonymously</Link>
           </>

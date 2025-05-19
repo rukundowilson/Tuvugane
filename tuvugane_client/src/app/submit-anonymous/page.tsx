@@ -21,6 +21,7 @@ interface Category {
 const SubmitAnonymous: React.FC = () => {
   const router = useRouter();
   const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [filteredAgencies, setFilteredAgencies] = useState<Agency[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingAgencies, setLoadingAgencies] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -44,6 +45,7 @@ const SubmitAnonymous: React.FC = () => {
         setLoadingAgencies(true);
         const data = await apiService.get<Agency[]>('/agencies');
         setAgencies(data);
+        setFilteredAgencies(data);
       } catch (err: any) {
         console.error('Failed to load agencies:', err);
         setError('Failed to load agencies. Please try again later.');
@@ -69,12 +71,50 @@ const SubmitAnonymous: React.FC = () => {
     fetchCategories();
   }, []);
 
+  const fetchAgenciesForCategory = async (categoryId: string) => {
+    try {
+      if (!categoryId) {
+        setFilteredAgencies(agencies);
+        return;
+      }
+      
+      setLoadingAgencies(true);
+      const response = await apiService.get<{ success: boolean; data: Agency[] }>(`/categories/${categoryId}/agencies`);
+      
+      if (response && response.success && Array.isArray(response.data)) {
+        setFilteredAgencies(response.data);
+      } else {
+        setFilteredAgencies([]);
+      }
+    } catch (err: any) {
+      console.error('Failed to get agencies for category:', err);
+      setFilteredAgencies([]);
+    } finally {
+      setLoadingAgencies(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    if (name === 'category_id' && value !== formData.category_id) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        agency_id: ''
+      }));
+      
+      if (value) {
+        fetchAgenciesForCategory(value);
+      } else {
+        setFilteredAgencies(agencies);
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,7 +346,7 @@ const SubmitAnonymous: React.FC = () => {
                       disabled={loadingAgencies}
                     >
                       <option value="">Select an agency</option>
-                      {agencies.map((agency) => (
+                      {filteredAgencies.map((agency) => (
                         <option key={agency.agency_id} value={agency.agency_id}>
                           {agency.name}
                         </option>
@@ -325,6 +365,22 @@ const SubmitAnonymous: React.FC = () => {
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Loading agencies...
+                    </p>
+                  )}
+                  {formData.category_id && filteredAgencies.length > 0 && !loadingAgencies && (
+                    <p className="mt-1 text-sm text-green-600 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      We found recommendations of who may help
+                    </p>
+                  )}
+                  {formData.category_id && filteredAgencies.length === 0 && !loadingAgencies && (
+                    <p className="mt-1 text-sm text-red-500 flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                      </svg>
+                      No agencies are mapped to this category. Please select a different category.
                     </p>
                   )}
                 </div>
